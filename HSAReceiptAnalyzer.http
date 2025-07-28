@@ -1,0 +1,6 @@
+@HSAReceiptAnalyzer_HostAddress = http://localhost:5290
+
+GET {{HSAReceiptAnalyzer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
