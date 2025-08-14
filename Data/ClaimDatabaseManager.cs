@@ -2,6 +2,7 @@
 using HSAReceiptAnalyzer.Models;
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
+using System.Xml.Schema;
 
 namespace HSAReceiptAnalyzer.Data
 {
@@ -54,7 +55,8 @@ namespace HSAReceiptAnalyzer.Data
                 Category TEXT,
                 ClaimLocation TEXT,
                 Items TEXT,
-                IPAddress TEXT
+                IPAddress TEXT,
+                VendorId TEXT
             );";
 
             using var cmd = new SqliteCommand(query, _connection);
@@ -78,12 +80,12 @@ namespace HSAReceiptAnalyzer.Data
                     ClaimId, UserId, Name, Address, Merchant, ServiceType,
                     Amount, DateOfService, SubmissionDate, UserAge, UserGender,
                     Description, IsFraudulent, FraudTemplate, Flags,
-                    ReceiptId, Category, ClaimLocation, Items, IPAddress
+                    ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId
                 ) VALUES (
                     @ClaimId, @UserId, @Name, @Address, @Merchant, @ServiceType,
                     @Amount, @DateOfService, @SubmissionDate, @UserAge, @UserGender,
                     @Description, @IsFraudulent, @FraudTemplate, @Flags,
-                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress
+                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress, @VendorId
                 );";
 
                 cmd.Parameters.AddWithValue("@ClaimId", c.ClaimId);
@@ -104,6 +106,7 @@ namespace HSAReceiptAnalyzer.Data
                 cmd.Parameters.AddWithValue("@ReceiptId", (object?)c.ReceiptId ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@Category", (object?)c.Category ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@ClaimLocation", (object?)c.Location ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@VendorId", c.VendorId);
                 cmd.Parameters.AddWithValue("@Items", c.Items != null ? System.Text.Json.JsonSerializer.Serialize(c.Items) : DBNull.Value);
                 cmd.Parameters.AddWithValue("@IPAddress", (object?)c.IPAddress ?? DBNull.Value);
 
@@ -120,12 +123,12 @@ namespace HSAReceiptAnalyzer.Data
                     ClaimId, UserId, Name, Address, Merchant, ServiceType,
                     Amount, DateOfService, SubmissionDate, UserAge, UserGender,
                     Description, IsFraudulent, FraudTemplate, Flags,
-                    ReceiptId, Category, ClaimLocation, Items, IPAddress
+                    ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId
                 ) VALUES (
                     @ClaimId, @UserId, @Name, @Address, @Merchant, @ServiceType,
                     @Amount, @DateOfService, @SubmissionDate, @UserAge, @UserGender,
                     @Description, @IsFraudulent, @FraudTemplate, @Flags,
-                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress
+                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress, @VendorId
                 );";
 
             cmd.Parameters.AddWithValue("@ClaimId", claim.ClaimId);
@@ -148,6 +151,7 @@ namespace HSAReceiptAnalyzer.Data
             cmd.Parameters.AddWithValue("@ClaimLocation", (object?)claim.Location ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Items", claim.Items != null ? System.Text.Json.JsonSerializer.Serialize(claim.Items) : DBNull.Value);
             cmd.Parameters.AddWithValue("@IPAddress", (object?)claim.IPAddress ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@VendorId", (object?)claim.VendorId ?? DBNull.Value);
 
             cmd.ExecuteNonQuery();
         }
@@ -161,7 +165,7 @@ namespace HSAReceiptAnalyzer.Data
                 SELECT 
                     ClaimId, UserId, Name, Address, Merchant, ServiceType, Amount, 
                     DateOfService, SubmissionDate, UserAge, UserGender, Description, 
-                    IsFraudulent, FraudTemplate, Flags, ReceiptId, Category, Location, Items, IPAddress
+                    IsFraudulent, FraudTemplate, Flags, ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId
                 FROM Claims where UserId = @UserId;";
 
             using var cmd = new SqliteCommand(query, _connection);
@@ -187,6 +191,7 @@ namespace HSAReceiptAnalyzer.Data
                     IsFraudulent = reader.GetInt32(reader.GetOrdinal("IsFraudulent")),
                     FraudTemplate = reader["FraudTemplate"] == DBNull.Value ? null : reader["FraudTemplate"] as string,
                     Flags = reader["Flags"] == DBNull.Value ? null : reader["Flags"] as string,
+                    VendorId = reader["VendorId"] as string,
                     ReceiptId = reader["ReceiptId"] == DBNull.Value ? null : reader["ReceiptId"] as string,
                     Category = reader["Category"] == DBNull.Value ? null : reader["Category"] as string,
                     Location = reader["ClaimLocation"] == DBNull.Value ? null : reader["ClaimLocation"] as string,
@@ -231,7 +236,8 @@ namespace HSAReceiptAnalyzer.Data
                     IsFraudulent = Convert.ToInt32(reader["IsFraudulent"]),
                     FraudTemplate = reader["FraudTemplate"].ToString(),
                     Flags = reader["Flags"].ToString(),
-                    IPAddress = reader["IPAddress"].ToString()
+                    IPAddress = reader["IPAddress"].ToString(),
+                    VendorId = reader["VendorId"].ToString()
                 };
 
                 claims.Add(claim);

@@ -23,6 +23,7 @@ namespace HSAReceiptAnalyzer.Models
             public int IsFraudulent { get; set; }
             public string FraudTemplate { get; set; }
             public string Flags { get; set; }
+            public string VendorId { get; set; }
             public string IPAddress { get; set; }
         }
 

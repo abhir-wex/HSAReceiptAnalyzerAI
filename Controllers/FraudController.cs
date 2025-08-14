@@ -1,6 +1,10 @@
-﻿using HSAReceiptAnalyzer.Models;
+﻿using HSAReceiptAnalyzer.Data.Interfaces;
+using HSAReceiptAnalyzer.Models;
+using HSAReceiptAnalyzer.Services.Interface;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.ML;
+using System.Data.SqlTypes;
 
 namespace HSAReceiptAnalyzer.Controllers
 {
@@ -8,68 +12,49 @@ namespace HSAReceiptAnalyzer.Controllers
     [ApiController]
     public class FraudController : ControllerBase
     {
-        private readonly AnomalyScorer _scorer;
+        //private readonly AnomalyScorer _scorer;
+        private readonly IClaimDatabaseManager _claimDatabaseManager;
+        private readonly IFraudDetectionService _fraudDetectionService;
 
-
-        public FraudController(AnomalyScorer scorer)
+        public FraudController(IClaimDatabaseManager claimDatabaseManager, IFraudDetectionService fraudDetectionService)
         {
-            _scorer = scorer;
+            _claimDatabaseManager = claimDatabaseManager;
+            _fraudDetectionService = fraudDetectionService;
         }
 
-        [HttpPost("score")]
-        public IActionResult Score([FromBody] ClaimFeatures features)
-        {
-            if (features == null) return BadRequest("Missing features");
-            var result = _scorer.Score(features);
+        //[HttpPost("score")]
+        //public IActionResult Score([FromBody] ClaimFeatures features)
+        //{
+        //    if (features == null) return BadRequest("Missing features");
+        //    var result = _scorer.Score(features);
 
-            // pick a threshold using validation data; e.g., top 5% scores -> anomaly
-            bool suspect = result.IsAnomaly || result.Score > 3.0f;
+        //    // pick a threshold using validation data; e.g., top 5% scores -> anomaly
+        //    bool suspect = result.IsAnomaly || result.Score > 3.0f;
 
-            return Ok(new
-            {
-                result.IsAnomaly,
-                result.Score,
-                Suspect = suspect,
-                Message = suspect ? "Potential fraud – route to manual review" : "Looks normal"
-            });
-        }
+        //    return Ok(new
+        //    {
+        //        result.IsAnomaly,
+        //        result.Score,
+        //        Suspect = suspect,
+        //        Message = suspect ? "Potential fraud – route to manual review" : "Looks normal"
+        //    });
+        //}
 
         [HttpPost("train")]
-        public async Task<IActionResult> TrainModel([FromBody] List<ClaimFeatures>? trainingData = null)
+        public IActionResult TrainFraudModel()
         {
             try
             {
-                if (trainingData == null || !trainingData.Any())
-                {
-                    return BadRequest("Training data is required and cannot be empty");
-                }
-
-                // Validate training data has labeled examples
-                if (!trainingData.Any(x => x.IsFraudulent))
-                {
-                    return BadRequest("Training data must contain both fraudulent and non-fraudulent examples");
-                }
-
-                var sqlitePath = "ClaimsDB1.sqlite";
-                var modelPath = "Data/anomaly_model.zip";
-
-                await Task.Run(() => TrainAnomalyModel.Run(sqlitePath, modelPath));
-
+                var modelPath = _fraudDetectionService.TrainModel();
                 return Ok(new
                 {
-                    Message = "Model training completed successfully",
-                    TrainingDataCount = trainingData.Count,
-                    FraudulentExamples = trainingData.Count(x => x.IsFraudulent),
-                    NormalExamples = trainingData.Count(x => !x.IsFraudulent)
+                    Message = "Fraud detection model trained successfully.",
+                    ModelPath = modelPath
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    Message = "Model training failed",
-                    Error = ex.Message
-                });
+                return BadRequest(new { Error = ex.Message });
             }
         }
     }

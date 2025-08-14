@@ -43,8 +43,6 @@ SQLitePCL.Batteries.Init();
 
 builder.Services.AddSingleton<MLContext>();
 
-//builder.Services.AddPredictionEnginePool<Claim, AnomalyPrediction>();
-
 // Add CORS policy
 builder.Services.AddCors(options =>
 {
@@ -67,24 +65,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Add endpoint to manually trigger model retraining
-app.MapPost("/retrain-model", (IServiceProvider serviceProvider) =>
-{
-    try
-    {
-        var dbPath = "ClaimsDB1.sqlite";
-        var modelPath = "Models/fraud-detection-model.zip";
-        
-        Directory.CreateDirectory("Models");
-        TrainAnomalyModel.Run(dbPath, modelPath);
-        
-        return Results.Ok("Model retrained successfully. Restart the application to use the new model.");
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest($"Failed to retrain model: {ex.Message}");
-    }
-});
 
 app.UseCors("AllowReactApp");
 app.UseHttpsRedirection();
