@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HSA Fraud Analyzer</title>
+    <script>
+        document.getElementById("claimForm").addEventListener("submit", async function (e) {
+            e.preventDefault(); // ✅ Prevent default form redirect
+
+            const form = e.target;
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch("/api/analyze", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const resultText = await response.text();
+
+                // Display the result dynamically on the page
+                document.getElementById("result").textContent = resultText;
+            } catch (err) {
+                console.error("Analysis failed:", err);
+                document.getElementById("result").textContent = "Error analyzing claim.";
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-900 p-8">
+
+    <h1 class="text-2xl font-bold mb-6">🏥 HSA Receipt Fraud Analyzer</h1>
+
+    <!-- Claims Table -->
+    <div class="mb-6">
+        <h2 class="text-lg font-semibold mb-2">📋 Existing Claims</h2>
+        <table class="min-w-full bg-white shadow rounded">
+            <thead class="bg-gray-200 text-gray-700">
+                <tr>
+                    <th class="py-2 px-4">Date</th>
+                    <th class="py-2 px-4">Amount</th>
+                    <th class="py-2 px-4">Merchant</th>
+                    <th class="py-2 px-4">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="border-b">
+                    <td class="py-2 px-4">2025-07-01</td>
+                    <td class="py-2 px-4">$100.00</td>
+                    <td class="py-2 px-4">Sunrise Dental</td>
+                    <td class="py-2 px-4">Dental Cleaning</td>
+                </tr>
+                <tr class="border-b bg-gray-50">
+                    <td class="py-2 px-4">2025-07-10</td>
+                    <td class="py-2 px-4">$250.00</td>
+                    <td class="py-2 px-4">FitZone Gym</td>
+                    <td class="py-2 px-4">Annual Gym</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add Claim Button -->
+    <button onclick="toggleForm()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-4">
+        ➕ Add New Claim
+    </button>
+
+    <!-- Claim Form -->
+    <form id="claimForm" class="bg-white p-6 shadow rounded hidden" onsubmit="handleSubmit(event)">
+        <h2 class="text-lg font-semibold mb-4">📝 Submit New Claim</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <input name="date" type="date" required class="border p-2 rounded" placeholder="Date of Service" />
+            <input name="amount" type="number" required class="border p-2 rounded" placeholder="Amount ($)" />
+            <input name="merchant" type="text" required class="border p-2 rounded" placeholder="Merchant Name" />
+            <input name="description" type="text" required class="border p-2 rounded" placeholder="Description" />
+        </div>
+
+        <!-- Receipt Upload -->
+        <div class="mb-4">
+            <label class="block mb-1 font-medium">🧾 Upload Receipt</label>
+            <input name="receipt" type="file" accept=".pdf,.jpg,.png" class="border p-2 rounded w-full" />
+        </div>
+
+        <!-- Optional Prompt -->
+        <div class="mb-4">
+            <label class="block mb-1 font-medium">🧠 Optional Custom Prompt</label>
+            <textarea name="customPrompt" rows="3" class="border p-2 rounded w-full" placeholder="Customize the fraud detection prompt here..."></textarea>
+        </div>
+
+        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            📤 Submit Claim & Analyze
+        </button>
+    </form>
+
+    <!-- Analysis Result -->
+    <div id="analysisResult" class="mt-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 hidden"></div>
+</body>
+</html>
+
