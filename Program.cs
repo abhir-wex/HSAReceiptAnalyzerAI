@@ -1,17 +1,60 @@
+using DotNetEnv;
+using HSAReceiptAnalyzer.Controllers;
+using HSAReceiptAnalyzer.Data;
+using HSAReceiptAnalyzer.Data.Interfaces;
+using HSAReceiptAnalyzer.Models;
 using HSAReceiptAnalyzer.Services;
+using HSAReceiptAnalyzer.Services.Interface;
+using Microsoft.Data.Sqlite;
+using Microsoft.ML;
 using Microsoft.SemanticKernel;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<SemanticKernelService>();
-builder.Services.AddSingleton<FormRecognizerService>();
+builder.Services.Configure<ClaimDatabaseOptions>(options =>
+{
+    options.DbPath = "ClaimsDB1.sqlite";
+    options.JsonPath = "Data/multiple_users.json";
+});
+
+Env.Load();
+var kernelBuilder = Kernel.CreateBuilder();
+var kernel = kernelBuilder.Build();
+
+builder.Services.AddSingleton(kernel);
+
+builder.Services.AddScoped<ISemanticKernelService, SemanticKernelService>();
+builder.Services.AddScoped<IFormRecognizerService, FormRecognizerService>();
+builder.Services.AddScoped<IFraudDetectionService, FraudDetectionService>();
+
+builder.Services.AddScoped<IClaimDatabaseManager>(provider =>
+{
+    var dbPath = "ClaimsDB1.sqlite";
+    var jsonPath = "Data/multiple_users.json";
+    var connection = $"Data Source={dbPath}";
+    return new ClaimDatabaseManager(dbPath, jsonPath, connection);
+});
+SQLitePCL.Batteries.Init();
+
+builder.Services.AddSingleton<MLContext>();
+
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:3000")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+});
 
 var app = builder.Build();
 
@@ -22,10 +65,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+
+app.UseCors("AllowReactApp");
 app.UseHttpsRedirection();
-
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
+
+
+
+
