@@ -25,8 +25,8 @@ namespace HSAReceiptAnalyzer.Controllers
             _fraudDetectionService = fraudDetectionService;
         }
 
-        [HttpPost("upload")]
-        public async Task<IActionResult> AnalyzeImage([FromForm] ImageUploadRequest request)
+        [HttpPost("fraud-check")]
+        public async Task<IActionResult> AnalyzeClaim([FromForm] ImageUploadRequest request)
         {
             var receiptData = await _formService.ExtractDataAsync(request.Image);
 
