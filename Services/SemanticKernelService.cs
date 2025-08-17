@@ -170,7 +170,7 @@ End your response with the question:
             var arguments = new KernelArguments();
 
             // Pass the connection and UserId to GetClaims
-            var historyClaims = _claimDatabaseManager.GetClaims("U1001");
+            var historyClaims = _claimDatabaseManager.GetAllClaims();
 
             var historySummary = BuildHistorySummary(historyClaims);
 

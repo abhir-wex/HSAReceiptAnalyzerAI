@@ -99,8 +99,8 @@ namespace HSAReceiptAnalyzer.Services
                 ClaimId = Guid.NewGuid().ToString(),
                 ReceiptId = Guid.NewGuid().ToString(),
                 Amount = GetAmountValue(),
-                UserId = "USR0500", // Will need to be set from authenticated user context
-                Name = "User_500", // Will need to be set from user profile
+                UserId = "USR0501", // Will need to be set from authenticated user context
+                Name = "User_501", // Will need to be set from user profile
                 Address = "123 Main St Apt 125, City, State, 94213", // Will need to be set from user profile
                 Merchant = doc?.Fields.TryGetValue("MerchantName", out var merchantField) == true ? merchantField.Value.AsString() : "",
                 ServiceType = "Medical", // Default for HSA

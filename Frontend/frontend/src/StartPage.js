@@ -87,7 +87,7 @@ export default function StartPage() {
     const form = e.target;
     const formData = new FormData(form);
     try {
-      const response = await fetch("/Analyze/upload", {
+      const response = await fetch("/Analyze/fraud-check", {
         method: "POST",
         body: formData,
       });

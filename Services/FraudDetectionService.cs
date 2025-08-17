@@ -71,26 +71,44 @@ namespace HSAReceiptAnalyzer.Services
             if (!claims.Any())
                 throw new InvalidOperationException("No claims available for training.");
 
-            bool includeLabel = true;
+            // OPTIMIZATION 1: Pre-calculate aggregated data once
+            var userClaimsLookup = claims.GroupBy(c => c.UserId).ToLookup(g => g.Key, g => g.ToList());
+            var receiptHashLookup = claims.GroupBy(c => c.ReceiptHash).ToLookup(g => g.Key, g => g.Count());
+            var userAverages = userClaimsLookup.ToDictionary(g => g.Key, g => (float)g.Average(c => c.Count));
 
-            // Convert raw claims to ClaimFeatures (must include IsFraud label)
-            var claimFeaturesList = claims.Select(c => MapToClaimFeatures(c, includeLabel)).ToList();
+            // OPTIMIZATION 2: Parallel feature extraction
+            var claimFeaturesList = claims.AsParallel().Select(c => MapToClaimFeaturesOptimized(c, userClaimsLookup, receiptHashLookup, userAverages, includeLabel: true)).ToList();
 
             // Load into ML.NET
             var trainingData = _mlContext.Data.LoadFromEnumerable(claimFeaturesList);
 
-            // Collect all float features except the label
-            var featureColumns = typeof(ClaimFeatures)
-                .GetProperties()
-                .Where(p => p.PropertyType == typeof(float))
-                .Select(p => p.Name)
-                .ToArray();
+            // OPTIMIZATION 3: Pre-defined feature columns (avoid reflection)
+            var featureColumns = new[]
+            {
+                nameof(ClaimFeatures.Amount),
+                nameof(ClaimFeatures.DaysSinceLastClaim),
+                nameof(ClaimFeatures.SubmissionDelayDays),
+                nameof(ClaimFeatures.VendorFrequency),
+                nameof(ClaimFeatures.CategoryFrequency),
+                nameof(ClaimFeatures.AverageClaimAmountForUser),
+                nameof(ClaimFeatures.AmountDeviationFromAverage),
+                nameof(ClaimFeatures.IPAddressChangeFrequency),
+                nameof(ClaimFeatures.ItemCount),
+                nameof(ClaimFeatures.DistinctItemsRatio),
+                nameof(ClaimFeatures.ReceiptHashDuplicateCount),
+                nameof(ClaimFeatures.ReceiptHashFrequencyForUser)
+            };
 
-            // Replace the pipeline definition with the following:
+            // OPTIMIZATION 4: Optimized LightGBM parameters for faster training
             var pipeline = _mlContext.Transforms.Concatenate("Features", featureColumns)
                 .Append(_mlContext.BinaryClassification.Trainers.LightGbm(
                     labelColumnName: nameof(ClaimFeatures.IsFraudulent),
-                    featureColumnName: "Features"));
+                    featureColumnName: "Features",
+                    numberOfIterations: 100,      // Reduced from default 100
+                    numberOfLeaves: 20,           // Reduced from default 31
+                    minimumExampleCountPerLeaf: 10, // Increased from default 1
+                    learningRate: 0.1             // Slightly higher learning rate
+                ));
 
             // Train model
             var model = pipeline.Fit(trainingData);
@@ -100,6 +118,91 @@ namespace HSAReceiptAnalyzer.Services
             _mlContext.Model.Save(model, trainingData.Schema, modelPath);
 
             return modelPath;
+        }
+
+        public async Task<string> TrainModelAsync()
+        {
+            return await Task.Run(() => TrainModel());
+        }
+
+        private ClaimFeatures MapToClaimFeaturesOptimized(
+            Claim claim, 
+            ILookup<string, List<Claim>> userClaimsLookup,
+            ILookup<string, int> receiptHashLookup,
+            Dictionary<string, float> userAverages,
+            bool includeLabel = false)
+        {
+            var userClaims = userClaimsLookup[claim.UserId].FirstOrDefault() ?? new List<Claim>();
+            var userAverage = userAverages.GetValueOrDefault(claim.UserId, 0f);
+
+            var features = new ClaimFeatures
+            {
+                Amount = (float)claim.Amount,
+                DaysSinceLastClaim = CalculateDaysSinceLastClaimOptimized(userClaims, claim.DateOfService),
+                SubmissionDelayDays = (float)(claim.SubmissionDate - claim.DateOfService).TotalDays,
+                VendorFrequency = CalculateVendorFrequencyOptimized(userClaims, claim.VendorId),
+                CategoryFrequency = CalculateCategoryFrequencyOptimized(userClaims, claim.Category),
+                AverageClaimAmountForUser = userAverage,
+                AmountDeviationFromAverage = userAverage > 0 ? (float)Math.Abs(claim.Amount - userAverage) / userAverage : 0f,
+                IPAddressChangeFrequency = CalculateIPChangeFrequencyOptimized(userClaims),
+                ItemCount = claim.Items?.Count ?? 0,
+                DistinctItemsRatio = CalculateDistinctItemRatio(claim.Items),
+                ReceiptHashDuplicateCount = Math.Max(0f, receiptHashLookup[claim.ReceiptHash].FirstOrDefault() - 1),
+                ReceiptHashFrequencyForUser = CalculateReceiptHashFrequencyOptimized(userClaims, claim.ReceiptHash)
+            };
+
+            if (includeLabel)
+            {
+                features.IsFraudulent = claim.IsFraudulent == 1;
+            }
+
+            return features;
+        }
+
+        private float CalculateDaysSinceLastClaimOptimized(List<Claim> userClaims, DateTime claimDate)
+        {
+            var previousClaim = userClaims
+                .Where(c => c.SubmissionDate < claimDate)
+                .OrderByDescending(c => c.SubmissionDate)
+                .FirstOrDefault();
+
+            return previousClaim == null ? 9999f : (float)(claimDate - previousClaim.SubmissionDate).TotalDays;
+        }
+
+        private float CalculateVendorFrequencyOptimized(List<Claim> userClaims, string vendorId)
+        {
+            if (!userClaims.Any()) return 0f;
+            var vendorCount = userClaims.Count(c => c.VendorId == vendorId);
+            return (float)vendorCount / userClaims.Count;
+        }
+
+        private float CalculateCategoryFrequencyOptimized(List<Claim> userClaims, string category)
+        {
+            if (!userClaims.Any()) return 0f;
+            var categoryCount = userClaims.Count(c => string.Equals(c.Category, category, StringComparison.OrdinalIgnoreCase));
+            return (float)categoryCount / userClaims.Count;
+        }
+
+        private float CalculateIPChangeFrequencyOptimized(List<Claim> userClaims)
+        {
+            var orderedClaims = userClaims.OrderBy(c => c.SubmissionDate).ToArray();
+            if (orderedClaims.Length <= 1) return 0f;
+
+            int changeCount = 0;
+            for (int i = 1; i < orderedClaims.Length; i++)
+            {
+                if (!string.Equals(orderedClaims[i].IPAddress, orderedClaims[i-1].IPAddress, StringComparison.OrdinalIgnoreCase))
+                    changeCount++;
+            }
+
+            return (float)changeCount / (orderedClaims.Length - 1);
+        }
+
+        private float CalculateReceiptHashFrequencyOptimized(List<Claim> userClaims, string receiptHash)
+        {
+            if (string.IsNullOrEmpty(receiptHash) || !userClaims.Any()) return 0f;
+            var hashMatchCount = userClaims.Count(c => string.Equals(c.ReceiptHash, receiptHash, StringComparison.OrdinalIgnoreCase));
+            return (float)hashMatchCount / userClaims.Count;
         }
 
         private ClaimFeatures MapToClaimFeatures(Claim claim, bool includeLabel = false)
@@ -118,19 +221,15 @@ namespace HSAReceiptAnalyzer.Services
                 DistinctItemsRatio = CalculateDistinctItemRatio(claim.Items),
                 ReceiptHashDuplicateCount = CalculateReceiptHashDuplicateCount(claim.ReceiptHash),
                 ReceiptHashFrequencyForUser = CalculateReceiptHashFrequencyForUser(claim.UserId, claim.ReceiptHash),
-                //UserAge = CalculateUserAge(claim.UserId),
-               // IsFraudulent = claim.IsFraudulent == 1
             };
 
             if (includeLabel)
             {
-                // Only used during training
                 features.IsFraudulent = claim.IsFraudulent == 1;
             }
 
             return features;
         }
-
 
         private float CalculateReceiptHashDuplicateCount(string receiptHash)
         {
@@ -141,7 +240,6 @@ namespace HSAReceiptAnalyzer.Services
                 !string.IsNullOrEmpty(c.ReceiptHash) &&
                 string.Equals(c.ReceiptHash, receiptHash, StringComparison.OrdinalIgnoreCase));
 
-            // Return count - 1 to exclude the current claim itself
             return Math.Max(0f, duplicateCount - 1);
         }
 
@@ -167,7 +265,7 @@ namespace HSAReceiptAnalyzer.Services
                 .OrderByDescending(c => c.SubmissionDate)
                 .FirstOrDefault();
 
-            if (previousClaim == null) return 9999f; // No prior claim
+            if (previousClaim == null) return 9999f;
 
             return (float)(claimDate - previousClaim.SubmissionDate).TotalDays;
         }
@@ -234,22 +332,6 @@ namespace HSAReceiptAnalyzer.Services
             var distinctCount = items.Select(i => i).Distinct(StringComparer.OrdinalIgnoreCase).Count();
             return (float)distinctCount / items.Count;
         }
-
-        //private float CalculateUserAge(string userId)
-        //{
-        //    var user = _claimDatabaseManager.GetClaims(userId);
-        //    if (user?.DateOfBirth == null) return 0f;
-
-        //    var age = DateTime.UtcNow.Year - user.DateOfBirth.Value.Year;
-        //    if (DateTime.UtcNow.Date < user.DateOfBirth.Value.AddYears(age))
-        //        age--;
-
-        //    return (float)age;
-        //}
-
-
     }
-
-
 }
 

@@ -41,7 +41,25 @@ namespace HSAReceiptAnalyzer.Controllers
         //}
 
         [HttpPost("train")]
-        public IActionResult TrainFraudModel()
+        public async Task<IActionResult> TrainFraudModel()
+        {
+            try
+            {
+                var modelPath = await _fraudDetectionService.TrainModelAsync();
+                return Ok(new
+                {
+                    Message = "Fraud detection model trained successfully.",
+                    ModelPath = modelPath
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = ex.Message });
+            }
+        }
+
+        [HttpPost("train-sync")]
+        public IActionResult TrainFraudModelSync()
         {
             try
             {
