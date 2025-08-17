@@ -25,6 +25,7 @@ namespace HSAReceiptAnalyzer.Models
             public string Flags { get; set; }
             public string VendorId { get; set; }
             public string IPAddress { get; set; }
+            public string ReceiptHash { get; set; }
         }
 
     public class ClaimFeatures

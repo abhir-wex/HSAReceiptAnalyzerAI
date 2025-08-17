@@ -3,6 +3,7 @@ using HSAReceiptAnalyzer.Models;
 using HSAReceiptAnalyzer.Services;
 using HSAReceiptAnalyzer.Services.Interface;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace HSAReceiptAnalyzer.Controllers
 {
@@ -13,35 +14,67 @@ namespace HSAReceiptAnalyzer.Controllers
         private readonly ISemanticKernelService _skService;
         private readonly IFormRecognizerService _formService;
         private readonly IClaimDatabaseManager _claimDatabaseManager;
+        private readonly IFraudDetectionService _fraudDetectionService;
 
         public AnalyzeController(ISemanticKernelService skService, IFormRecognizerService formService, IClaimDatabaseManager claimDatabaseManager
-            )
+, IFraudDetectionService fraudDetectionService)
         {
             _skService = skService;
             _formService = formService;
             _claimDatabaseManager = claimDatabaseManager;
-
+            _fraudDetectionService = fraudDetectionService;
         }
 
         [HttpPost("upload")]
         public async Task<IActionResult> AnalyzeImage([FromForm] ImageUploadRequest request)
         {
             var receiptData = await _formService.ExtractDataAsync(request.Image);
-            // 2. Save claim in DB
+
+            bool duplicateFound = _claimDatabaseManager.ExistsDuplicate(receiptData.ReceiptHash, receiptData.UserId);
+
+            if (duplicateFound)
+            {
+                return Ok(new
+                {
+                    ClaimId = receiptData.ClaimId,
+                    IsFraudulent = true,
+                    FraudScore = 95,
+                    Message = "⚠ Receipt hash found in another user's claim."
+                });
+            }
+
+            // --- Step 2: ML prediction (supervised LightGBM) ---
+            var prediction = _fraudDetectionService.Predict(receiptData);
+
+            
+            float fraudLikelihood = Math.Clamp(prediction.FinalFraudScore, 0f, 100f);
+
+            // --- Step 3: Assign risk levels based on fraud score ---
+            string riskLevel = fraudLikelihood switch
+            {
+                < 40 => "Low",
+                < 70 => "Medium",
+                _ => "High"
+            };
+
+
+            // --- Step 4: Determine if fraudulent based on consistent thresholds ---
+            bool isFraudulent = fraudLikelihood >= 70; // High risk threshold
+
             _claimDatabaseManager.InsertClaim(receiptData);
+            // --- Step 5: Human-readable message based on consistent logic ---
+            string message = isFraudulent
+                ? $"⚠ This claim is potentially fraudulent ({fraudLikelihood:F2}%, {riskLevel} risk)."
+                : $"✅ This claim appears normal ({fraudLikelihood:F2}%, {riskLevel} risk).";
 
-            // 3. ML.NET Fraud detection
-           // var isFraud = _faudDetectionService.CheckFraud(receiptData);
-
-            // 4. AI Insights
-            var aiAnalysis = await _skService.AnalyzeReceiptAsync(receiptData);
-
-            // 5. Combine response
+            // --- Step 6: Response ---
             return Ok(new
             {
                 ClaimId = receiptData.ClaimId,
-               // IsFraudulent = isFraud,
-                AIInsights = aiAnalysis
+                IsFraudulent = isFraudulent,
+                FraudScore = fraudLikelihood,
+                RiskLevel = riskLevel,
+                Message = message
             });
         }
 

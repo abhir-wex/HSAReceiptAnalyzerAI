@@ -11,11 +11,58 @@ namespace HSAReceiptAnalyzer.Services
     {
         private readonly IClaimDatabaseManager _claimDatabaseManager;
         private readonly MLContext _mlContext;
+        private readonly ITransformer _model;
+        private readonly PredictionEngine<ClaimFeatures, FraudPrediction> _predictionEngine;
 
         public FraudDetectionService(IClaimDatabaseManager claimDatabaseManager) {
 
             _claimDatabaseManager = claimDatabaseManager;
             _mlContext = new MLContext();
+
+            var modelPath = Path.Combine(AppContext.BaseDirectory, "fraudModel.zip");
+            using var stream = new FileStream(modelPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            _model = _mlContext.Model.Load(stream, out var modelInputSchema);
+
+            _predictionEngine = _mlContext.Model.CreatePredictionEngine<ClaimFeatures, FraudPrediction>(_model);
+        }
+
+        public FraudResult Predict(Claim claim)
+        {
+            // Convert claim to features
+            var claimFeatures = MapToClaimFeatures(claim, includeLabel: false);
+
+            // Rule check: duplicate receipt across users
+            bool duplicateFound = _claimDatabaseManager.ExistsDuplicate(claim.ReceiptHash, claim.UserId);
+
+            // Run ML prediction (supervised)
+            var mlPrediction = _predictionEngine.Predict(claimFeatures);
+
+            // ML fraud score as %
+            float mlScore = mlPrediction.Probability * 100;
+
+            // Rule score if duplicate
+            float ruleScore = duplicateFound ? 95f : 0f;
+
+            // Final score: whichever is stronger
+            float finalScore = Math.Max(mlScore, ruleScore);
+
+            // Fraud decision: either ML thinks fraudulent or rules triggered
+            bool isFraudulent = mlPrediction.IsFraudulent || duplicateFound || finalScore >= 75;
+
+            // Build result
+            return new FraudResult
+            {
+                ClaimId = claim.ClaimId,
+                IsFraudulent = isFraudulent,
+                MlScore = mlScore,
+                RuleScore = ruleScore,
+                FinalFraudScore = finalScore,
+                Explanation = duplicateFound
+                    ? "⚠ Duplicate receipt hash found across users."
+                    : (mlPrediction.IsFraudulent
+                        ? $"⚠ ML classified as fraudulent ({mlScore:F2}%)."
+                        : "✅ Claim appears normal.")
+            };
         }
 
         public string TrainModel()
@@ -24,31 +71,40 @@ namespace HSAReceiptAnalyzer.Services
             if (!claims.Any())
                 throw new InvalidOperationException("No claims available for training.");
 
-            // Convert raw claims to ClaimFeatures
-            var claimFeaturesList = claims.Select(c => MapToClaimFeatures(c)).ToList();
+            bool includeLabel = true;
 
+            // Convert raw claims to ClaimFeatures (must include IsFraud label)
+            var claimFeaturesList = claims.Select(c => MapToClaimFeatures(c, includeLabel)).ToList();
+
+            // Load into ML.NET
+            var trainingData = _mlContext.Data.LoadFromEnumerable(claimFeaturesList);
+
+            // Collect all float features except the label
             var featureColumns = typeof(ClaimFeatures)
                 .GetProperties()
                 .Where(p => p.PropertyType == typeof(float))
                 .Select(p => p.Name)
                 .ToArray();
 
-            var trainingData = _mlContext.Data.LoadFromEnumerable(claimFeaturesList);
-
+            // Replace the pipeline definition with the following:
             var pipeline = _mlContext.Transforms.Concatenate("Features", featureColumns)
-                .Append(_mlContext.AnomalyDetection.Trainers.RandomizedPca("Features", rank: 5));
+                .Append(_mlContext.BinaryClassification.Trainers.LightGbm(
+                    labelColumnName: nameof(ClaimFeatures.IsFraudulent),
+                    featureColumnName: "Features"));
 
+            // Train model
             var model = pipeline.Fit(trainingData);
 
+            // Save model to file
             var modelPath = Path.Combine(AppContext.BaseDirectory, "fraudModel.zip");
             _mlContext.Model.Save(model, trainingData.Schema, modelPath);
 
             return modelPath;
         }
 
-        private ClaimFeatures MapToClaimFeatures(Claim claim)
+        private ClaimFeatures MapToClaimFeatures(Claim claim, bool includeLabel = false)
         {
-            return new ClaimFeatures
+            var features = new ClaimFeatures
             {
                 Amount = (float)claim.Amount,
                 DaysSinceLastClaim = CalculateDaysSinceLastClaim(claim.UserId, claim.DateOfService),
@@ -60,9 +116,47 @@ namespace HSAReceiptAnalyzer.Services
                 IPAddressChangeFrequency = CalculateIPChangeFrequency(claim.UserId),
                 ItemCount = claim.Items.Count,
                 DistinctItemsRatio = CalculateDistinctItemRatio(claim.Items),
+                ReceiptHashDuplicateCount = CalculateReceiptHashDuplicateCount(claim.ReceiptHash),
+                ReceiptHashFrequencyForUser = CalculateReceiptHashFrequencyForUser(claim.UserId, claim.ReceiptHash),
                 //UserAge = CalculateUserAge(claim.UserId),
-                IsFraudulent = false
+               // IsFraudulent = claim.IsFraudulent == 1
             };
+
+            if (includeLabel)
+            {
+                // Only used during training
+                features.IsFraudulent = claim.IsFraudulent == 1;
+            }
+
+            return features;
+        }
+
+
+        private float CalculateReceiptHashDuplicateCount(string receiptHash)
+        {
+            if (string.IsNullOrEmpty(receiptHash)) return 0f;
+
+            var allClaims = _claimDatabaseManager.GetAllClaims();
+            var duplicateCount = allClaims.Count(c =>
+                !string.IsNullOrEmpty(c.ReceiptHash) &&
+                string.Equals(c.ReceiptHash, receiptHash, StringComparison.OrdinalIgnoreCase));
+
+            // Return count - 1 to exclude the current claim itself
+            return Math.Max(0f, duplicateCount - 1);
+        }
+
+        private float CalculateReceiptHashFrequencyForUser(string userId, string receiptHash)
+        {
+            if (string.IsNullOrEmpty(receiptHash)) return 0f;
+
+            var userClaims = _claimDatabaseManager.GetClaims(userId);
+            if (!userClaims.Any()) return 0f;
+
+            var hashMatchCount = userClaims.Count(c =>
+                !string.IsNullOrEmpty(c.ReceiptHash) &&
+                string.Equals(c.ReceiptHash, receiptHash, StringComparison.OrdinalIgnoreCase));
+
+            return (float)hashMatchCount / userClaims.Count();
         }
 
         private float CalculateDaysSinceLastClaim(string userId, DateTime claimDate)
