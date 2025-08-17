@@ -10,5 +10,6 @@ namespace HSAReceiptAnalyzer.Data.Interfaces
         List<Claim> GetAllClaims();
         void InsertClaims(List<Claim> claims);
         void InsertClaim(Claim claim);
+        bool ExistsDuplicate(string ReceiptHash, string UserId);
     }
 }

@@ -21,36 +21,106 @@ namespace HSAReceiptAnalyzer.Services
             var result = await _client.AnalyzeDocumentAsync(WaitUntil.Completed, "prebuilt-receipt", stream);
 
             var doc = result.Value.Documents.FirstOrDefault();
+            
+            // Helper method to safely extract amount
+            double GetAmountValue()
+            {
+                if (doc?.Fields.TryGetValue("Total", out var totalField) == true)
+                {
+                    try
+                    {
+                        // Try as Currency first
+                        if (totalField.Value.AsCurrency() is CurrencyValue currencyValue)
+                        {
+                            return (double)currencyValue.Amount;
+                        }
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // If Currency fails, try as Double
+                        try
+                        {
+                            return totalField.Value.AsDouble();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // If both fail, try as String and parse
+                            if (double.TryParse(totalField.Value.AsString(), out var parsedAmount))
+                            {
+                                return parsedAmount;
+                            }
+                        }
+                    }
+                }
+                return 0.0;
+            }
+
+            string GetMerchantAddress()
+            {
+                if (doc?.Fields.TryGetValue("MerchantAddress", out var addressField) == true)
+                {
+                    try
+                    {
+                        // Try to get as Address first
+                        var address = addressField.Value.AsAddress();
+                        return address.ToString();
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        try
+                        {
+                            // Fallback to string if Address type fails
+                            return addressField.Value.AsString();
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // Return empty string if both fail
+                            return "";
+                        }
+                    }
+                }
+                return "";
+            }
+            // Helper method to generate receipt hash
+            string GenerateReceiptHash()
+            {
+                var hashData = $"{GetAmountValue()}|" +
+                              $"{(doc?.Fields.TryGetValue("MerchantName", out var merchantField) == true ? merchantField.Value.AsString() : "")}|" +
+                              $"{(doc?.Fields.TryGetValue("TransactionDate", out var dateField) == true ? dateField.Value.AsDate().Date : DateTime.Now)}|" +
+                              $"{string.Join(",", doc?.Fields.TryGetValue("Items", out var itemsField) == true ? itemsField.Value.AsList().Select(item => item.Value.AsDictionary().TryGetValue("Description", out var desc) ? desc.Value.AsString() : "") : new List<string>())}";
+                
+                using var sha256 = System.Security.Cryptography.SHA256.Create();
+                var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(hashData));
+                return Convert.ToHexString(hashBytes);
+            }
+
             return new Claim
             {
                 ClaimId = Guid.NewGuid().ToString(),
                 ReceiptId = Guid.NewGuid().ToString(),
-                Amount = doc?.Fields.TryGetValue("Total", out var totalField) == true && totalField.Value.AsCurrency() is CurrencyValue currencyValue ? (double)currencyValue.Amount : 0.0,
-                UserId = "", // Will need to be set from authenticated user context
-                Name = "", // Will need to be set from user profile
-                Address = "", // Will need to be set from user profile
+                Amount = GetAmountValue(),
+                UserId = "USR0500", // Will need to be set from authenticated user context
+                Name = "User_500", // Will need to be set from user profile
+                Address = "123 Main St Apt 125, City, State, 94213", // Will need to be set from user profile
                 Merchant = doc?.Fields.TryGetValue("MerchantName", out var merchantField) == true ? merchantField.Value.AsString() : "",
-                //Amount = doc?.Fields.TryGetValue("Total", out var totalField) == true && totalField.Value.AsCurrency() is CurrencyValue currencyValue ? (decimal)currencyValue.Amount : 0m,
                 ServiceType = "Medical", // Default for HSA
                 DateOfService = doc?.Fields.TryGetValue("TransactionDate", out var dateField) == true ? dateField.Value.AsDate().Date : DateTime.Now,
-                //Amount = doc?.Fields.TryGetValue("Total", out var totalField) == true && totalField.Value.AsCurrency() is CurrencyValue currencyValue ? (decimal)currencyValue.Amount : 0m,
-                
                 SubmissionDate = DateTime.Now,
                 Category = "Healthcare", // Default for HSA
-                Location = doc?.Fields.TryGetValue("MerchantAddress", out var addressField) == true ? addressField.Value.AsString() : "",
+                Location = GetMerchantAddress(),
                 UserAge = 0, // Will need to be set from user profile
                 Items = doc?.Fields.TryGetValue("Items", out var itemsField) == true ? 
                     itemsField.Value.AsList().Select(item => 
                         item.Value.AsDictionary().TryGetValue("Description", out var desc) ? desc.Value.AsString() : "").ToList() : 
                     new List<string>(),
-                UserGender = "", // Will need to be set from user profile
+                UserGender = "Female", // Will need to be set from user profile
                 Description = doc?.Fields.TryGetValue("MerchantName", out var descField) == true ? $"Receipt from {descField.Value.AsString()}" : "Medical expense",
                 IsFraudulent = 0, // Default to not fraudulent
                 FraudTemplate = "",
                 Flags = "",
-                IPAddress = "" // Will need to be set from request context
+                IPAddress = "", // Will need to be set from request context
+                ReceiptHash = GenerateReceiptHash()
             };
-            //write an insert method to save in claims table
         }
     }
 }

@@ -23,8 +23,8 @@ namespace HSAReceiptAnalyzer.Data
         {
             if (File.Exists(_dbFilePath))
                 File.Delete(_dbFilePath);
-                 _connection.Open();
-                CreateTable();
+            _connection.Open();
+            CreateTable();
 
             var claims = LoadClaimsFromJson();
             InsertClaims(claims);
@@ -56,7 +56,8 @@ namespace HSAReceiptAnalyzer.Data
                 ClaimLocation TEXT,
                 Items TEXT,
                 IPAddress TEXT,
-                VendorId TEXT
+                VendorId TEXT,
+                ReceiptHash TEXT
             );";
 
             using var cmd = new SqliteCommand(query, _connection);
@@ -80,12 +81,12 @@ namespace HSAReceiptAnalyzer.Data
                     ClaimId, UserId, Name, Address, Merchant, ServiceType,
                     Amount, DateOfService, SubmissionDate, UserAge, UserGender,
                     Description, IsFraudulent, FraudTemplate, Flags,
-                    ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId
+                    ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId, ReceiptHash
                 ) VALUES (
                     @ClaimId, @UserId, @Name, @Address, @Merchant, @ServiceType,
                     @Amount, @DateOfService, @SubmissionDate, @UserAge, @UserGender,
                     @Description, @IsFraudulent, @FraudTemplate, @Flags,
-                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress, @VendorId
+                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress, @VendorId, @ReceiptHash
                 );";
 
                 cmd.Parameters.AddWithValue("@ClaimId", c.ClaimId);
@@ -109,6 +110,7 @@ namespace HSAReceiptAnalyzer.Data
                 cmd.Parameters.AddWithValue("@VendorId", c.VendorId);
                 cmd.Parameters.AddWithValue("@Items", c.Items != null ? System.Text.Json.JsonSerializer.Serialize(c.Items) : DBNull.Value);
                 cmd.Parameters.AddWithValue("@IPAddress", (object?)c.IPAddress ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ReceiptHash", (object?)c.ReceiptHash ?? DBNull.Value);
 
                 cmd.ExecuteNonQuery();
             }
@@ -123,12 +125,12 @@ namespace HSAReceiptAnalyzer.Data
                     ClaimId, UserId, Name, Address, Merchant, ServiceType,
                     Amount, DateOfService, SubmissionDate, UserAge, UserGender,
                     Description, IsFraudulent, FraudTemplate, Flags,
-                    ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId
+                    ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId, ReceiptHash
                 ) VALUES (
                     @ClaimId, @UserId, @Name, @Address, @Merchant, @ServiceType,
                     @Amount, @DateOfService, @SubmissionDate, @UserAge, @UserGender,
                     @Description, @IsFraudulent, @FraudTemplate, @Flags,
-                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress, @VendorId
+                    @ReceiptId, @Category, @ClaimLocation, @Items, @IPAddress, @VendorId, @ReceiptHash
                 );";
 
             cmd.Parameters.AddWithValue("@ClaimId", claim.ClaimId);
@@ -152,6 +154,7 @@ namespace HSAReceiptAnalyzer.Data
             cmd.Parameters.AddWithValue("@Items", claim.Items != null ? System.Text.Json.JsonSerializer.Serialize(claim.Items) : DBNull.Value);
             cmd.Parameters.AddWithValue("@IPAddress", (object?)claim.IPAddress ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@VendorId", (object?)claim.VendorId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ReceiptHash", (object?)claim.ReceiptHash ?? DBNull.Value);
 
             cmd.ExecuteNonQuery();
         }
@@ -165,7 +168,7 @@ namespace HSAReceiptAnalyzer.Data
                 SELECT 
                     ClaimId, UserId, Name, Address, Merchant, ServiceType, Amount, 
                     DateOfService, SubmissionDate, UserAge, UserGender, Description, 
-                    IsFraudulent, FraudTemplate, Flags, ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId
+                    IsFraudulent, FraudTemplate, Flags, ReceiptId, Category, ClaimLocation, Items, IPAddress, VendorId, ReceiptHash
                 FROM Claims where UserId = @UserId;";
 
             using var cmd = new SqliteCommand(query, _connection);
@@ -196,7 +199,8 @@ namespace HSAReceiptAnalyzer.Data
                     Category = reader["Category"] == DBNull.Value ? null : reader["Category"] as string,
                     Location = reader["ClaimLocation"] == DBNull.Value ? null : reader["ClaimLocation"] as string,
                     IPAddress = reader["IPAddress"] == DBNull.Value ? null : reader["IPAddress"] as string,
-                    Items = reader["Items"] == DBNull.Value ? null : System.Text.Json.JsonSerializer.Deserialize<List<string>>(reader["Items"] as string ?? "[]")
+                    Items = reader["Items"] == DBNull.Value ? null : System.Text.Json.JsonSerializer.Deserialize<List<string>>(reader["Items"] as string ?? "[]"),
+                    ReceiptHash = reader["ReceiptHash"] == DBNull.Value ? null : reader["ReceiptHash"] as string
                 };
                 claims.Add(claim);
             }
@@ -237,7 +241,8 @@ namespace HSAReceiptAnalyzer.Data
                     FraudTemplate = reader["FraudTemplate"].ToString(),
                     Flags = reader["Flags"].ToString(),
                     IPAddress = reader["IPAddress"].ToString(),
-                    VendorId = reader["VendorId"].ToString()
+                    VendorId = reader["VendorId"].ToString(),
+                    ReceiptHash = reader["ReceiptHash"].ToString()
                 };
 
                 claims.Add(claim);
@@ -282,5 +287,12 @@ namespace HSAReceiptAnalyzer.Data
                 Console.WriteLine($"⚠️ {reader["ClaimId"]} | Template: {reader["FraudTemplate"]}");
             }
         }
+
+        public bool ExistsDuplicate(string ReceiptHash, string UserId)
+        {
+            var allClaims = GetAllClaims();
+            bool isDuplicate = allClaims.Any(cl => cl.ReceiptHash == ReceiptHash && cl.UserId != UserId);
+            return isDuplicate;
+        }
     }
-}
+    }
