@@ -4,6 +4,6 @@ namespace HSAReceiptAnalyzer.Services.Interface
 {
     public interface IFormRecognizerService
     {
-       Task<Claim> ExtractDataAsync(IFormFile image);
+       Task<Claim> ExtractDataAsync(ImageUploadRequest request);
     }
 }
