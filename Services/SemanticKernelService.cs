@@ -27,13 +27,22 @@ namespace HSAReceiptAnalyzer.Services
             // Use your model ID (e.g., "azure-gpt-4o" or "bedrock-titan-text-lite-v1")
             string modelId = "azure-gpt-4o";
 
-            // WEX Gateway endpoint (use trailing slash and v1)
-            string endpoint = Environment.GetEnvironmentVariable("WEX_OPENAI_ENDPOINT") 
-                ?? throw new InvalidOperationException("WEX_OPENAI_ENDPOINT environment variable is not set");
+            // Get configuration from appsettings.json with fallback to environment variables
+            var wexConfig = config.GetSection("WEXOpenAI");
+            string endpoint = wexConfig["Endpoint"] ?? 
+                Environment.GetEnvironmentVariable("WEX_OPENAI_ENDPOINT") ?? 
+                throw new InvalidOperationException("WEX OpenAI endpoint not configured");
 
-            // Your WEX AI Gateway API Key
-            string apiKey = Environment.GetEnvironmentVariable("WEX_OPENAI_KEY") 
-                ?? throw new InvalidOperationException("WEX_OPENAI_KEY environment variable is not set");
+            string apiKey = wexConfig["Key"] ?? 
+                Environment.GetEnvironmentVariable("WEX_OPENAI_KEY") ?? 
+                throw new InvalidOperationException("WEX OpenAI API key not configured");
+
+            // Validate that we have actual values (not empty strings)
+            if (string.IsNullOrWhiteSpace(endpoint))
+                throw new InvalidOperationException("WEX OpenAI endpoint is empty. Please configure WEXOpenAI:Endpoint in appsettings.json");
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("WEX OpenAI API key is empty. Please configure WEXOpenAI:Key in appsettings.json");
 
             // Convert endpoint string to Uri
             var endpointUri = new Uri(endpoint);
@@ -932,6 +941,8 @@ End your response with the question:
     }
 
 }
+
+
 
 
 

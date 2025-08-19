@@ -15,14 +15,20 @@ namespace HSAReceiptAnalyzer.Controllers
         private readonly IFormRecognizerService _formService;
         private readonly IClaimDatabaseManager _claimDatabaseManager;
         private readonly IFraudDetectionService _fraudDetectionService;
+        private readonly IRAGService _ragService;
 
-        public AnalyzeController(ISemanticKernelService skService, IFormRecognizerService formService, IClaimDatabaseManager claimDatabaseManager
-, IFraudDetectionService fraudDetectionService)
+        public AnalyzeController(
+            ISemanticKernelService skService, 
+            IFormRecognizerService formService, 
+            IClaimDatabaseManager claimDatabaseManager,
+            IFraudDetectionService fraudDetectionService,
+            IRAGService ragService)
         {
             _skService = skService;
             _formService = formService;
             _claimDatabaseManager = claimDatabaseManager;
             _fraudDetectionService = fraudDetectionService;
+            _ragService = ragService;
         }
 
         [HttpPost("fraud-check")]
@@ -86,16 +92,37 @@ namespace HSAReceiptAnalyzer.Controllers
                 return BadRequest("Prompt is required.");
             }
 
-            string route = await _skService.RouteAdminPromptAsync(request.Prompt);
+            // Enhanced: Try RAG-based contextual analysis first
+            try
+            {
+                var allClaims = _claimDatabaseManager.GetAllClaims();
+                var ragAnalysis = await _ragService.GetContextualAnalysisAsync(request.Prompt, allClaims);
+                
+                return Ok(new
+                {
+                    SummaryType = "RAG_Enhanced_Analysis",
+                    Summary = ragAnalysis,
+                    AnalysisMethod = "RAG_Contextual",
+                    TotalClaims = allClaims.Count,
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                // Fallback to original pattern-based analysis if RAG fails
+                Console.WriteLine($"RAG analysis failed, falling back to pattern analysis: {ex.Message}");
+            }
 
-            var allClaims = _claimDatabaseManager.GetAllClaims();
+            // Original pattern-based analysis as fallback
+            string route = await _skService.RouteAdminPromptAsync(request.Prompt);
+            var allClaimsForFallback = _claimDatabaseManager.GetAllClaims();
 
             object result;
 
             switch (route)
             {
                 case "SharedReceiptSummary":
-                    var summary = _skService.SummarizeSharedReceiptFraud(allClaims, request.Prompt);
+                    var summary = _skService.SummarizeSharedReceiptFraud(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "SharedFraudReceiptSummary",
@@ -106,26 +133,26 @@ namespace HSAReceiptAnalyzer.Controllers
                     result = new
                     {
                         SummaryType = "TemplateSummary",
-                        Summary = SemanticKernelService.SummarizeByFraudTemplate(allClaims, request.Prompt)
+                        Summary = SemanticKernelService.SummarizeByFraudTemplate(allClaimsForFallback, request.Prompt)
                     };
                     break;
                 case "UserAnomalySummary":
                     result = new
                     {
                         SummaryType = "UserAnomalySummary",
-                        Summary = SemanticKernelService.SummarizeUserAnomalies(allClaims, request.Prompt)
+                        Summary = SemanticKernelService.SummarizeUserAnomalies(allClaimsForFallback, request.Prompt)
                     };
                     break;
                 case "HighRiskVendors":
                     result = new
                     {
                         SummaryType = "HighRiskVendors",
-                        Summary = SemanticKernelService.SummarizeHighRiskVendors(allClaims, request.Prompt)
+                        Summary = SemanticKernelService.SummarizeHighRiskVendors(allClaimsForFallback, request.Prompt)
                     };
                     break;
 
                 case "ClaimPatternClassifier":
-                    var pattern = _skService.SummarizeClaimPatterns(allClaims, request.Prompt);
+                    var pattern = _skService.SummarizeClaimPatterns(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "ClaimPatternClassifier",
@@ -136,7 +163,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     result = new
                     {
                         SummaryType = "ClaimTimeSpikeSummary",
-                        Summary = SemanticKernelService.SummarizeClaimTimeSpikes(allClaims, request.Prompt)
+                        Summary = SemanticKernelService.SummarizeClaimTimeSpikes(allClaimsForFallback, request.Prompt)
                     };
                     break;
 
@@ -144,12 +171,12 @@ namespace HSAReceiptAnalyzer.Controllers
                     result = new
                     {
                         SummaryType = "SuspiciousUserNetwork",
-                        Summary = SemanticKernelService.SummarizeSuspiciousUserLinks(allClaims, request.Prompt)
+                        Summary = SemanticKernelService.SummarizeSuspiciousUserLinks(allClaimsForFallback, request.Prompt)
                     };
                     break;
 
                 case "SuspiciousPatternAnalysis":
-                    var suspiciousPatterns = await _skService.DetectSuspiciousPatterns(allClaims, request.Prompt);
+                    var suspiciousPatterns = await _skService.DetectSuspiciousPatterns(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "SuspiciousPatternAnalysis",
@@ -158,7 +185,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     break;
 
                 case "RoundAmountPattern":
-                    var roundAmountAnalysis = await _skService.DetectRoundAmountPatterns(allClaims, request.Prompt);
+                    var roundAmountAnalysis = await _skService.DetectRoundAmountPatterns(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "RoundAmountPattern",
@@ -167,7 +194,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     break;
 
                 case "HighFrequencySubmissions":
-                    var highFrequencyAnalysis = await _skService.DetectHighFrequencySubmissions(allClaims, request.Prompt);
+                    var highFrequencyAnalysis = await _skService.DetectHighFrequencySubmissions(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "HighFrequencySubmissions",
@@ -176,7 +203,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     break;
 
                 case "UnusualTimingPatterns":
-                    var timingPatterns = await _skService.DetectUnusualTimingPatterns(allClaims, request.Prompt);
+                    var timingPatterns = await _skService.DetectUnusualTimingPatterns(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "UnusualTimingPatterns",
@@ -185,7 +212,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     break;
 
                 case "RapidSuccessionClaims":
-                    var rapidSuccession = await _skService.DetectRapidSuccessionClaims(allClaims, request.Prompt);
+                    var rapidSuccession = await _skService.DetectRapidSuccessionClaims(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "RapidSuccessionClaims",
@@ -194,7 +221,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     break;
 
                 case "IPAnomalies":
-                    var ipAnomalies = await _skService.DetectIPAnomalies(allClaims, request.Prompt);
+                    var ipAnomalies = await _skService.DetectIPAnomalies(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "IPAnomalies",
@@ -203,7 +230,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     break;
 
                 case "EscalatingAmounts":
-                    var escalatingAmounts = await _skService.DetectEscalatingAmounts(allClaims, request.Prompt);
+                    var escalatingAmounts = await _skService.DetectEscalatingAmounts(allClaimsForFallback, request.Prompt);
                     result = new
                     {
                         SummaryType = "EscalatingAmounts",
