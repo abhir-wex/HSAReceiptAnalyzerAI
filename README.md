@@ -15,13 +15,35 @@ This system revolutionizes fraud detection by combining:
 - **Azure AI Services** for receipt OCR and data extraction
 - **Semantic Kernel** for intelligent fraud reasoning
 - **Real-time Learning** that improves with each fraud case
+- **Advanced HSA Item Validation** for comprehensive eligibility checking
+
+## :star: Latest Enhancements (v2.0)
+
+### :rocket: **Enhanced RAG-Powered Fraud Detection**
+- **Advanced Item Validation**: Automatic detection of non-HSA eligible items (alcohol, tobacco, candy)
+- **Intelligent Fraud Reasoning**: Combined ML + RAG scoring with evidence-based recommendations
+- **Real-time Pattern Learning**: Automatic indexing of new fraud cases for future reference
+- **Enhanced Response Structure**: Human-readable explanations with technical details
+- **Graceful Degradation**: RAG-first analysis with fallback to traditional pattern detection
+
+### :zap: **Smart Item Analysis**
+- **70% Invalid Item Threshold**: Automatic fraud flagging for high ratios of non-HSA items
+- **Suspicious Item Detection**: Recognition of clearly non-eligible items (alcohol, tobacco, etc.)
+- **Item Validation Scoring**: Comprehensive scoring with detailed breakdowns
+- **Category-based Organization**: Medications, Medical Supplies, Vision Care, Dental Care
+
+### :chart_with_upwards_trend: **Improved Admin Experience**
+- **Natural Language Queries**: "Show me fraud patterns at HealthMart with round amounts"
+- **RAG-First Analysis**: Contextual intelligence with pattern-based fallback
+- **HSA Item Catalog**: Searchable database of eligible items by category
+- **Enhanced Debugging**: Comprehensive logging for fraud investigation
 
 ## :star: Key Features
 
 ### :zap: **Enhanced Fraud Detection**
 - **Contextual Analysis**: "This $250 claim matches 3 historical fraud cases at HealthMart"
 - **Evidence-Based Decisions**: Specific historical patterns referenced in analysis
-- **Risk Factor Identification**: Round amounts, same-day submissions, IP anomalies
+- **Risk Factor Identification**: Round amounts, same-day submissions, IP anomalies, invalid items
 - **Intelligent Recommendations**: "Cross-reference receipt hash across all users"
 
 ### :rocket: **RAG-Powered Intelligence**
@@ -53,7 +75,12 @@ This system revolutionizes fraud detection by combining:
 - **Real example**: "SharedReceiptAcrossUsers" pattern evolving to include IP address manipulation
 - **Business value**: Proactive fraud prevention and early detection of emerging schemes
 
-## :triangular_flag_on_post: Architecture
+### 4. **Intelligent Item Validation** ⭐ NEW
+- **What it does**: Automatically detects non-HSA eligible items and flags suspicious receipt contents
+- **Real example**: Receipt containing "Beer, Wine, Acetaminophen" — System flags alcohol items while allowing valid medication
+- **Business value**: Prevents fraudulent claims for clearly ineligible items while maintaining accuracy for legitimate claims
+
+## :triangular_flag_on_post: Enhanced Architecture
 
 ```
 +---------------------+    +---------------------+    +---------------------+
@@ -61,7 +88,8 @@ This system revolutionizes fraud detection by combining:
 |                     |    |                     |    |                     |
 | - Receipt Upload    |    | - RAG Analysis      |    | - Form Recognizer   |
 | - Admin Dashboard   |    | - ML Fraud Model    |    | - WEX AI Gateway    |
-| - Results Display   |    | - Knowledge Base    |    | - OpenAI Models     |
+| - HSA Item Catalog  |    | - Item Validation   |    | - OpenAI Models     |
+| - Results Display   |    | - Knowledge Base    |    | - Semantic Kernel   |
 +---------------------+    +---------------------+    +---------------------+
                                       |
                                       v
@@ -70,11 +98,12 @@ This system revolutionizes fraud detection by combining:
                            |                     |
                            | - Claims Data       |
                            | - Fraud Patterns    |
+                           | - HSA Item Rules    |
                            | - User History      |
                            +---------------------+
 ```
 
-### RAG Technical Architecture
+### Enhanced RAG Technical Architecture
 ```
 +---------------------+
 |    New Claim        |
@@ -82,27 +111,29 @@ This system revolutionizes fraud detection by combining:
 +----------+----------+
            |
            v
++---------------------+    +---------------------+    +---------------------+
+|   Item Validation   |    |   Traditional ML    |    |    RAG Service      |
+|   - HSA Eligibility |<-->|   Fraud Detection   |<-->|                     |
+|   - Suspicious Items|    |   (LightGBM)        |    |  - Knowledge Base   |
+|   - Ratio Analysis  |    +---------------------+    |  - Semantic Search  |
++---------------------+               |                |  - Context Analysis |
+           |                          |                |  - Pattern Learning |
+           |                          |                +---------------------+
+           v                          v                           |
++---------------------+    +---------------------+               |
+|   Enhanced Scoring  |    |   RAG Insights      |<--------------+
+|   - ML Score        |<-->|   - Historical Cases|
+|   - Item Score      |    |   - Risk Factors    |
+|   - RAG Confidence  |    |   - Recommendations |
 +---------------------+    +---------------------+
-|   Traditional ML    |    |    RAG Service      |
-|   Fraud Detection   |<-->|                     |
-|   (LightGBM)        |    |  - Knowledge Base   |
-+---------------------+    |  - Semantic Search  |
-           |                |  - Context Analysis |
-           |                +---------------------+
-           v                           |
-+---------------------+               |
-|   Combined Score    |<--------------+
-|   & Analysis        |
-+---------------------+
-           |
-           v
-+---------------------+
-|   Enhanced Response |
-|   - ML Score        |
-|   - RAG Analysis    |
-|   - Historical Cases|
-|   - Risk Factors    |
-|   - Recommendations |
+           |                          |
+           v                          v
++---------------------+    +---------------------+
+|   Intelligent       |    |   Fraud Case        |
+|   Response          |    |   Indexing          |
+|   - User-Readable   |    |   (if fraudulent)   |
+|   - Technical       |    +---------------------+
+|   - Evidence-Based  |
 +---------------------+
 ```
 
@@ -203,12 +234,12 @@ info: Found X fraud cases to index
 info: RAG Knowledge Base initialized successfully
 ```
 
-## :link: API Endpoints
+## :link: Enhanced API Endpoints
 
-### :rocket: RAG-Enhanced Endpoints
+### :rocket: RAG-Enhanced Endpoints (Primary)
 
-#### `POST /api/RAGAnalyze/enhanced-fraud-check`
-**RAG-enhanced fraud analysis with historical context**
+#### `POST /api/RAGAnalyze/enhanced-fraud-check` ⭐ ENHANCED
+**Complete RAG-enhanced fraud analysis with item validation**
 
 ```bash
 curl -X POST "https://localhost:7041/api/RAGAnalyze/enhanced-fraud-check" \
@@ -216,7 +247,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/enhanced-fraud-check" \
   -F "image=@receipt.jpg"
 ```
 
-**Enhanced Response with RAG Context:**
+**Enhanced Response with RAG Context & Item Validation:**
 ```json
 {
   "claimId": "CLAIM-2025-001",
@@ -225,7 +256,10 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/enhanced-fraud-check" \
   "riskLevel": "High",
   "mlScore": 82.0,
   "ragConfidence": 0.89,
-  "message": "?? FRAUD DETECTED (87.5%, High risk). This pattern matches 3 historical fraud case(s).",
+  "message": "⚠ FRAUD DETECTED (87.5%, High risk). This pattern matches 3 historical fraud case(s). Key factors: Round amount pattern, Invalid HSA items.",
+  "userReadableText": "This receipt contains items that are not eligible for HSA reimbursement, including alcohol and tobacco products. The claim amount of $250 also matches suspicious round-amount patterns from previous fraud cases.",
+  "technicalDetails": "Receipt hash analysis indicates potential SharedReceiptAcrossUsers pattern with 92% confidence based on historical data.",
+  "fraudReason": "InvalidHSAItems",
   "ragAnalysis": "Based on historical patterns, this $250 claim at HealthMart matches SharedReceiptAcrossUsers template...",
   "similarHistoricalCases": [
     {
@@ -234,13 +268,26 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/enhanced-fraud-check" \
       "source": "FraudKnowledgeBase"
     }
   ],
-  "riskFactors": ["Round amount pattern", "Same-day submission"],
-  "recommendedAction": "Cross-reference receipt hash across all users"
+  "riskFactors": ["Round amount pattern", "Invalid HSA items", "Historical pattern match"],
+  "recommendedAction": "Verify receipt authenticity and item details; Cross-reference receipt hash across all users",
+  "itemValidation": {
+    "score": 25.5,
+    "validItems": ["Acetaminophen", "Bandages"],
+    "invalidItems": ["Beer", "Wine", "Cigarettes"],
+    "notes": "Contains clearly non-HSA eligible items: Beer, Wine, Cigarettes",
+    "totalItems": 5,
+    "validItemsCount": 2,
+    "invalidItemsCount": 3,
+    "invalidItemsRatio": 0.6,
+    "suspiciousItems": ["Beer", "Wine", "Cigarettes"],
+    "isItemValidationFraud": true
+  },
+  "analysisTimestamp": "2025-01-27T10:30:00Z"
 }
 ```
 
-#### `POST /api/RAGAnalyze/contextual-admin-analysis`
-**Natural language fraud analysis queries**
+#### `POST /api/RAGAnalyze/contextual-admin-analysis` ⭐ ENHANCED
+**RAG-first admin analysis with pattern fallback**
 
 ```bash
 curl -X POST "https://localhost:7041/api/RAGAnalyze/contextual-admin-analysis" \
@@ -248,13 +295,54 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/contextual-admin-analysis" \
   -d '{"prompt": "Show me fraud patterns at HealthMart Pharmacy with round amounts"}'
 ```
 
-**Sample Admin Query Response:**
+**Enhanced Admin Query Response:**
 ```json
 {
   "query": "Show me fraud patterns at HealthMart Pharmacy with round amounts",
-  "contextualAnalysis": "## Fraud Analysis: HealthMart Pharmacy Round Amount Patterns\n\n### Historical Evidence:\n- 5 confirmed fraud cases with round amounts ($100, $250, $500)\n- 'SharedReceiptAcrossUsers' template appears in 80% of cases\n- Geographic clustering: 3 cases from Phoenix area\n\n### Risk Assessment:\n- **HIGH RISK**: Round amounts correlate with 89% fraud rate\n- **Emerging Pattern**: Receipt hash duplication across users\n\n### Recommendations:\n1. Flag all HealthMart claims with round amounts\n2. Implement real-time receipt hash verification",
+  "summaryType": "RAG_Enhanced_Analysis",
+  "contextualAnalysis": "## Fraud Analysis: HealthMart Pharmacy Round Amount Patterns\n\n### Historical Evidence:\n- 5 confirmed fraud cases with round amounts ($100, $250, $500)\n- 'SharedReceiptAcrossUsers' template appears in 80% of cases\n- Geographic clustering: 3 cases from Phoenix area\n- **NEW**: 60% of cases also contained invalid HSA items\n\n### Risk Assessment:\n- **HIGH RISK**: Round amounts correlate with 89% fraud rate\n- **Emerging Pattern**: Receipt hash duplication across users\n- **Item Pattern**: Invalid items found in 60% of round amount cases\n\n### Recommendations:\n1. Flag all HealthMart claims with round amounts\n2. Implement real-time receipt hash verification\n3. **NEW**: Enhanced item validation for HealthMart claims",
+  "analysisMethod": "RAG_Contextual",
+  "similarPatterns": [
+    {
+      "relevance": 0.95,
+      "pattern": "Round amount pattern at HealthMart with invalid items - 5 cases detected...",
+      "metadata": {"merchant": "HealthMart", "pattern": "RoundAmountWithInvalidItems"}
+    }
+  ],
   "totalClaimsAnalyzed": 1250,
-  "fraudCasesInKnowledgeBase": 85
+  "fraudCasesInKnowledgeBase": 85,
+  "analysisTimestamp": "2025-01-27T10:30:00Z"
+}
+```
+
+#### `POST /api/RAGAnalyze/ai-analysis` ⭐ NEW
+**Combined RAG and Semantic Kernel analysis**
+
+```bash
+curl -X POST "https://localhost:7041/api/RAGAnalyze/ai-analysis" \
+  -H "Content-Type: multipart/form-data" \
+  -F "image=@receipt.jpg"
+```
+
+#### `GET /api/RAGAnalyze/hsa-items` ⭐ NEW
+**Retrieve categorized HSA-eligible items**
+
+```bash
+curl -X GET "https://localhost:7041/api/RAGAnalyze/hsa-items"
+```
+
+**HSA Items Response:**
+```json
+{
+  "totalCount": 150,
+  "items": ["Acetaminophen", "Bandages", "Blood pressure monitor", ...],
+  "categories": {
+    "medications": ["Acetaminophen", "Ibuprofen", "Prescription drugs", ...],
+    "medicalSupplies": ["Bandages", "Gauze", "Medical thermometer", ...],
+    "visionCare": ["Eye drops", "Contact solution", "Prescription glasses", ...],
+    "dentalCare": ["Dental floss", "Toothbrush", "Dental visits", ...]
+  },
+  "lastUpdated": "2025-01-27T10:30:00Z"
 }
 ```
 
@@ -283,49 +371,86 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
 ### Traditional Endpoints (Backward Compatible)
 
 #### `POST /Analyze/fraud-check`
-**Traditional ML-based fraud detection**
+**Traditional ML-based fraud detection with enhanced item validation**
 
 #### `POST /Analyze/adminAnalyze`
 **Pattern-based analysis with RAG fallback**
 
-### Knowledge Base Management
+#### `POST /Analyze/ai-analysis`
+**Traditional AI analysis**
 
-#### `POST /api/RAGAnalyze/rebuild-knowledge-base`
-**Rebuild the RAG knowledge base**
+#### `GET /Analyze/hsa-items`
+**HSA eligible items (legacy endpoint)**
 
-## :chart_with_upwards_trend: RAG vs Traditional Analysis Comparison
+## :chart_with_upwards_trend: Enhanced RAG vs Traditional Analysis
 
-### Before RAG (Traditional):
+### Before Enhancement (Traditional):
 ```json
 {
   "IsFraudulent": true,
   "FraudScore": 85,
-  "Message": "?? High risk claim detected"
+  "Message": "⚠ High risk claim detected"
 }
 ```
 
-### After RAG (Enhanced):
+### After Enhancement (RAG v2.0):
 ```json
 {
   "IsFraudulent": true,
   "FraudScore": 87.5,
   "RiskLevel": "High",
-  "Message": "?? FRAUD DETECTED (87.5%, High risk). This pattern matches 3 historical fraud case(s). Key factors: Round amount pattern, Same-day submission.",
-  "RAGAnalysis": "Based on historical fraud patterns, this claim shows HIGH similarity to confirmed fraud cases. The $250.00 amount at HealthMart Pharmacy matches the 'RoundAmountPattern' template seen in 3 previous cases.",
+  "Message": "⚠ FRAUD DETECTED (87.5%, High risk). This pattern matches 3 historical fraud case(s). Key factors: Round amount pattern, Invalid HSA items.",
+  "UserReadableText": "This receipt contains non-HSA eligible items including alcohol products. The $250 round amount also matches suspicious patterns from 3 previous fraud cases at the same merchant.",
+  "TechnicalDetails": "Receipt hash indicates SharedReceiptAcrossUsers pattern. Item validation score: 25.5% (3 of 5 items invalid). RAG confidence: 89%.",
+  "FraudReason": "InvalidHSAItems",
+  "RAGAnalysis": "Based on historical fraud patterns, this claim shows HIGH similarity to confirmed fraud cases...",
   "SimilarHistoricalCases": [...],
-  "RiskFactors": ["Round amount pattern", "Same-day submission", "High similarity to known fraud cases"],
-  "RecommendedAction": "Verify receipt authenticity and item details; Cross-reference receipt hash across all users"
+  "RiskFactors": ["Round amount pattern", "Invalid HSA items", "Historical pattern match", "Same merchant fraud history"],
+  "RecommendedAction": "Verify receipt authenticity and item details; Cross-reference receipt hash across all users; Review merchant risk profile",
+  "ItemValidation": {
+    "Score": 25.5,
+    "InvalidItemsRatio": 0.6,
+    "SuspiciousItems": ["Beer", "Wine"],
+    "IsItemValidationFraud": true
+  }
 }
 ```
 
-## :mag_right: Real Use Case Example
+## :mag_right: Enhanced Use Case Examples
 
-### Scenario: Investigating Suspicious $250 Claim
+### Scenario 1: Sophisticated Item Validation Fraud ⭐ NEW
+
+1. **New Claim Submitted**: 
+   - Amount: $75.50
+   - Merchant: "Corner Store Pharmacy"
+   - Items: ["Acetaminophen", "Beer", "Wine", "Bandages", "Cigarettes"]
+
+2. **Enhanced Analysis Process**:
+   ```
+   Item Validation: 2 valid / 5 total items (40% validation score)
+   Suspicious Items Detected: Beer, Wine, Cigarettes (clearly non-HSA)
+   Invalid Items Ratio: 60% (exceeds 70% threshold)
+   
+   RAG Search: "Corner Store invalid items fraud patterns"
+   Historical Matches: 2 similar cases with alcohol/tobacco items
+   ```
+
+3. **Intelligent Investigation Result**:
+   ```
+   FRAUD ALERT: Invalid HSA Items Detected
+   Reason: Contains clearly non-HSA eligible items: Beer, Wine, Cigarettes
+   Historical Context: Matches 2 previous fraud patterns with alcohol/tobacco
+   Investigation Priority: HIGH - Item-based fraud with historical precedent
+   Recommended Action: Reject claim; Review merchant compliance training
+   ```
+
+### Scenario 2: Complex Pattern Recognition
 
 1. **New Claim Submitted**: 
    - Amount: $250.00
    - Merchant: HealthMart Pharmacy
    - User: USR0501
+   - Items: All valid HSA items
 
 2. **RAG Analysis Process**:
    ```
@@ -335,94 +460,107 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
    - 92% relevance: Previous fraud at HealthMart for $250 (SharedReceiptAcrossUsers)
    - 88% relevance: Round amount fraud pattern at HealthMart
    - 85% relevance: Same merchant, different user, similar timeframe
+   
+   Item Validation: 100% valid HSA items
+   Combined Analysis: High ML score + Strong RAG match + Valid items = Sophisticated fraud
    ```
 
 3. **Enhanced Investigation Result**:
    ```
-   FRAUD ALERT: This claim matches known fraud pattern "SharedReceiptAcrossUsers"
+   FRAUD ALERT: Sophisticated fraud pattern detected
    Historical Evidence: Receipt hash found in 2 previous fraud cases
-   Investigation Priority: HIGH - Cross-reference immediately
-   Recommended Action: Contact HealthMart to verify transaction authenticity
+   Item Analysis: All items are HSA-eligible (sophisticated fraud attempt)
+   Pattern: SharedReceiptAcrossUsers with valid items to avoid detection
+   Investigation Priority: CRITICAL - Sophisticated fraud requiring immediate attention
+   Recommended Action: Contact HealthMart to verify transaction authenticity; Cross-reference receipt metadata
    ```
 
-## :gear: Configuration
+## :gear: Enhanced Configuration
 
 ### Key Configuration Sections
 
 | Setting | Description | Required |
 |---------|-------------|----------|
-| `WEXOpenAI:Endpoint` | WEX AI Gateway endpoint | :white_check_mark: |
-| `WEXOpenAI:Key` | WEX API key | :white_check_mark: |
-| `FormRecognizer:Endpoint` | Azure Form Recognizer endpoint | :grey_exclamation: Optional |
-| `FormRecognizer:Key` | Azure Form Recognizer key | :grey_exclamation: Optional |
+| `WEXOpenAI:Endpoint` | WEX AI Gateway endpoint | ✅ |
+| `WEXOpenAI:Key` | WEX API key | ✅ |
+| `FormRecognizer:Endpoint` | Azure Form Recognizer endpoint | ⚠️ Optional |
+| `FormRecognizer:Key` | Azure Form Recognizer key | ⚠️ Optional |
 
-### Database Configuration
+### Enhanced Database Configuration
 
-The system uses SQLite by default:
+The system uses SQLite by default with enhanced schemas:
 - **Database**: `ClaimsDB1.sqlite` (auto-created)
 - **Sample Data**: `Data/multiple_users.json`
 - **Location**: Project root directory
-
-### CORS Configuration
-
-The API is configured to accept requests from:
-- `http://localhost:3000` (React development server)
-- Modify `Program.cs` to add additional origins for production
+- **New Tables**: HSA item rules, fraud pattern cache, RAG knowledge index
 
 ### RAG System Configuration
 
-The RAG system automatically initializes on application startup:
+The enhanced RAG system automatically initializes on application startup:
 
 ```csharp
-// In Program.cs
+// In Program.cs - Enhanced initialization
 using (var scope = app.Services.CreateScope())
 {
     var ragService = scope.ServiceProvider.GetRequiredService<IRAGService>();
     await ragService.InitializeKnowledgeBaseAsync(); // Indexes existing fraud cases
+    await ragService.BuildItemValidationRulesAsync(); // NEW: HSA item rules
 }
 ```
 
-## :white_check_mark: Testing the System
+## :white_check_mark: Enhanced Testing
 
-### 1. Test Enhanced Fraud Detection
+### 1. Test Enhanced Fraud Detection with Item Validation ⭐ NEW
 
 1. Start both backend and frontend
 2. Navigate to `http://localhost:3000`
 3. Go to the "Claims" tab
-4. Upload a receipt image or fill out the form manually
-5. Observe the enhanced fraud analysis with RAG context
+4. Test different scenarios:
+   - **Valid HSA claim**: Upload receipt with only medical items
+   - **Invalid items fraud**: Create claim with alcohol/tobacco items
+   - **Mixed items**: Test the 70% invalid threshold
+   - **Round amount + invalid items**: Test combined pattern detection
 
-### 2. Test Admin Analysis
+### 2. Test Enhanced Admin Analysis ⭐ NEW
 
 1. Go to the "Administrator" tab
-2. Try queries like:
-   - "Show me fraud patterns at HealthMart Pharmacy"
-   - "Analyze round amount fraud trends"
-   - "Find claims with same-day submissions"
+2. Try enhanced queries:
+   - "Show me fraud patterns involving alcohol or tobacco items"
+   - "Analyze HealthMart claims with invalid HSA items"
+   - "Find round amount patterns with item validation issues"
+   - "What are the most common invalid items in fraud cases?"
 
-### 3. Test RAG Knowledge Base
+### 3. Test HSA Item Catalog ⭐ NEW
 
-Use API tools like Postman or curl to test the RAG endpoints directly.
+1. Navigate to the HSA Items endpoint: `GET /api/RAGAnalyze/hsa-items`
+2. Verify categorized item lists
+3. Test item validation logic with known valid/invalid items
 
-## :floppy_disk: Sample Data
+### 4. Test RAG Knowledge Base
 
-The system includes comprehensive sample data:
+Use API tools like Postman or curl to test the enhanced RAG endpoints directly.
+
+## :floppy_disk: Enhanced Sample Data
+
+The system includes comprehensive sample data with new validation scenarios:
 - **500+ claims** across multiple users
-- **Known fraud patterns**: SharedReceiptAcrossUsers, RoundAmountPattern
-- **Multiple merchants**: HealthMart Pharmacy, PharmaPoint, MediShop
+- **Known fraud patterns**: SharedReceiptAcrossUsers, RoundAmountPattern, InvalidHSAItems
+- **Multiple merchants**: HealthMart Pharmacy, PharmaPoint, MediShop, Corner Store
+- **Item validation cases**: Valid medical claims, alcohol/tobacco fraud, mixed scenarios
 - **Geographic distribution**: Phoenix, Chicago, Los Angeles, Houston, New York
 
-### RAG Knowledge Base Content
+### Enhanced RAG Knowledge Base Content
 
 The RAG system automatically indexes:
-- :white_check_mark: **Confirmed Fraud Cases** from your `multiple_users.json`
-- :white_check_mark: **Fraud Templates**: SharedReceiptAcrossUsers, RoundAmountPattern, etc.
-- :white_check_mark: **Merchant Risk Patterns**: HealthMart, PharmaPoint, MediShop cases
-- :white_check_mark: **Geographic Anomalies**: Location-based fraud indicators
-- :white_check_mark: **Temporal Patterns**: Time-based fraud behaviors
-- :white_check_mark: **IP Address Clustering**: Network-based fraud detection
+- ✅ **Confirmed Fraud Cases** from your `multiple_users.json`
+- ✅ **Fraud Templates**: SharedReceiptAcrossUsers, RoundAmountPattern, InvalidHSAItems ⭐ NEW
+- ✅ **Merchant Risk Patterns**: HealthMart, PharmaPoint, MediShop cases
+- ✅ **Item Validation Patterns**: Alcohol/tobacco fraud, invalid item ratios ⭐ NEW
+- ✅ **Geographic Anomalies**: Location-based fraud indicators
+- ✅ **Temporal Patterns**: Time-based fraud behaviors
+- ✅ **IP Address Clustering**: Network-based fraud detection
 
-## :shield: Fraud Detection Capabilities
+## :shield: Enhanced Fraud Detection Capabilities
 
 ### Traditional ML Detection
 - **Round amount patterns** ($100, $250, $500)
@@ -430,55 +568,68 @@ The RAG system automatically indexes:
 - **Unusual timing patterns** (late night, weekend submissions)
 - **Geographic anomalies** (IP address clustering)
 
-### RAG-Enhanced Detection
+### Enhanced RAG Detection ⭐ v2.0
 - **Historical pattern matching** with relevance scoring
 - **Contextual risk assessment** based on similar cases
 - **Evidence-based recommendations** with specific actions
 - **Merchant risk profiling** using historical fraud rates
+- **Advanced item validation** with suspicious item detection ⭐ NEW
+- **Multi-factor fraud reasoning** combining ML, RAG, and item analysis ⭐ NEW
+- **Pattern evolution tracking** for emerging fraud schemes ⭐ NEW
 
-## :trophy: Business Impact
+### New Fraud Detection Rules ⭐ v2.0
+- **Invalid Item Ratio**: Automatic fraud flagging when ≥70% of items are non-HSA eligible
+- **Suspicious Item Detection**: Recognition of clearly prohibited items (alcohol, tobacco, candy)
+- **Low Validation Score**: Fraud flagging for validation scores <20%
+- **Combined Pattern Analysis**: ML + RAG + Item validation for comprehensive scoring
+
+## :trophy: Enhanced Business Impact
 
 ### Immediate Benefits:
-- **Enhanced Accuracy**: Combined ML + RAG provides more accurate fraud detection
-- **Contextual Insights**: Investigators see specific historical patterns instead of generic scores
-- **Faster Investigation**: Relevant historical cases surface automatically
-- **Knowledge Retention**: Fraud expertise captured and searchable
+- **Enhanced Accuracy**: Combined ML + RAG + Item validation provides superior fraud detection
+- **Contextual Insights**: Investigators see specific historical patterns with item-level details
+- **Faster Investigation**: Relevant historical cases and item analysis surface automatically
+- **Knowledge Retention**: Fraud expertise captured and searchable with item validation rules
+- **Regulatory Compliance**: Automated HSA eligibility checking reduces compliance risks ⭐ NEW
 
 ### Long-term Value:
-- **Adaptive Learning**: System improves with each new fraud case
-- **Pattern Evolution**: Detects emerging fraud schemes early
-- **Institutional Knowledge**: Preserves investigator expertise
-- **Proactive Prevention**: Trend analysis enables preventive measures
+- **Adaptive Learning**: System improves with each new fraud case and item validation rule
+- **Pattern Evolution**: Detects emerging fraud schemes including sophisticated item-based fraud
+- **Institutional Knowledge**: Preserves investigator expertise including item validation expertise
+- **Proactive Prevention**: Trend analysis enables preventive measures for new fraud patterns
+- **Cost Reduction**: Automated item validation reduces manual review costs ⭐ NEW
 
-## :construction: Development
+## :construction: Enhanced Development
 
-### Project Structure
+### Enhanced Project Structure
 
 ```
 HSAReceiptAnalyzerAI/
 ├── Controllers/           # API controllers
-│   ├── AnalyzeController.cs       # Traditional fraud detection
-│   ├── RAGAnalyzeController.cs    # RAG-enhanced endpoints
+│   ├── AnalyzeController.cs       # Traditional fraud detection (enhanced)
+│   ├── RAGAnalyzeController.cs    # RAG-enhanced endpoints (v2.0) ⭐
 │   └── ClaimDatabaseController.cs # Database management
 ├── Services/             # Business logic services
-│   ├── RAGService.cs              # RAG implementation
-│   ├── FraudDetectionService.cs   # ML fraud detection
+│   ├── RAGService.cs              # RAG implementation (enhanced) ⭐
+│   ├── FraudDetectionService.cs   # ML fraud detection (enhanced)
 │   ├── SemanticKernelService.cs   # AI prompt handling
-│   └── FormRecognizerService.cs   # Receipt OCR
+│   └── FormRecognizerService.cs   # Receipt OCR + Item validation ⭐
 ├── Models/               # Data models
-│   ├── Claim.cs                   # Core claim model
+│   ├── Claim.cs                   # Core claim model (enhanced)
 │   ├── FraudKnowledgeEntry.cs     # RAG knowledge model
-│   └── RAGAnalysisResult.cs       # RAG analysis results
+│   ├── RAGAnalysisResult.cs       # RAG analysis results (enhanced) ⭐
+│   └── ItemValidationResult.cs    # Item validation model ⭐ NEW
 ├── Data/                 # Data layer
-│   ├── ClaimDatabaseManager.cs    # Database operations
-│   └── multiple_users.json        # Sample fraud data
+│   ├── ClaimDatabaseManager.cs    # Database operations (enhanced)
+│   ├── multiple_users.json        # Sample fraud data (enhanced) ⭐
+│   └── hsa_items.json             # HSA eligible items database ⭐ NEW
 ├── Frontend/frontend/    # React application
-│   ├── src/                       # React source code
+│   ├── src/                       # React source code (enhanced UI)
 │   └── public/                    # Static assets
 └── wwwroot/             # Built React app (production)
 ```
 
-### Key Dependencies
+### Enhanced Key Dependencies
 
 | Package | Version | Purpose |
 |---------|---------|---------|
@@ -488,39 +639,45 @@ HSAReceiptAnalyzerAI/
 | Azure.AI.FormRecognizer | 4.1.0 | Receipt OCR |
 | Microsoft.Data.Sqlite | 9.0.7 | Database operations |
 
-### Key RAG Components
+### Enhanced RAG Components ⭐ v2.0
 
-1. **RAGService** (`Services/RAGService.cs`)
+1. **Enhanced RAGService** (`Services/RAGService.cs`)
    - Manages fraud knowledge base indexing and searching
    - Provides contextual analysis using historical patterns
+   - **NEW**: Item validation pattern learning and analysis
    - Implements fallback local storage for reliability
 
-2. **FraudKnowledgeEntry** (`Models/FraudKnowledgeEntry.cs`)
+2. **Enhanced FraudKnowledgeEntry** (`Models/FraudKnowledgeEntry.cs`)
    - Structured representation of fraud cases in knowledge base
    - Includes contextual metadata and risk factors
+   - **NEW**: Item validation data and suspicious item patterns
 
-3. **RAGAnalyzeController** (`Controllers/RAGAnalyzeController.cs`)
-   - Enhanced fraud analysis endpoints
-   - Combines ML predictions with RAG insights
+3. **Enhanced RAGAnalyzeController** (`Controllers/RAGAnalyzeController.cs`)
+   - Enhanced fraud analysis endpoints with item validation
+   - Combines ML predictions with RAG insights and item analysis
+   - **NEW**: HSA item catalog management and validation endpoints
 
-### Adding New Fraud Patterns
+### Adding New Fraud Patterns ⭐ Enhanced Process
 
-1. **Define the pattern** in fraud detection logic
-2. **Create analysis methods** in RAGService
-3. **Update knowledge indexing** to include new metadata
-4. **Test with sample data** to verify detection
+1. **Define the pattern** in fraud detection logic (ML + Item validation)
+2. **Create analysis methods** in RAGService with item validation rules
+3. **Update knowledge indexing** to include new metadata and item patterns
+4. **Test with sample data** to verify detection accuracy
+5. **NEW**: Update HSA item validation rules as needed
 
-## :rocket: Deployment
+## :rocket: Enhanced Deployment
 
 ### Development
 - Backend: `dotnet run` (https://localhost:7041)
 - Frontend: `npm start` (http://localhost:3000)
+- **NEW**: Enhanced logging for item validation debugging
 
 ### Production
 - Build React app: `npm run build` in Frontend/frontend
 - Copy build output to wwwroot/
 - Deploy .NET application to your preferred hosting service
 - Configure environment variables for API keys
+- **NEW**: Ensure HSA item database is properly deployed
 
 ## :lock: Security Considerations
 
@@ -529,8 +686,9 @@ HSAReceiptAnalyzerAI/
 - **Environment Variables**: Use for production deployment
 - **CORS**: Configure appropriate origins for production
 - **HTTPS**: Always use HTTPS in production
+- **NEW**: HSA item data validation to prevent injection attacks
 
-## :wrench: Troubleshooting
+## :wrench: Enhanced Troubleshooting
 
 ### Common Issues
 
@@ -541,6 +699,11 @@ HSAReceiptAnalyzerAI/
 - Check that your WEX API key is valid
 - Verify network connectivity to WEX AI Gateway
 - Application will continue to work without RAG features
+
+**"Item validation not working properly"** ⭐ NEW
+- Verify HSA item database is properly loaded
+- Check FormRecognizer service configuration
+- Review item validation logs for debugging
 
 **React app not loading**
 - Ensure Node.js 18+ is installed
@@ -561,8 +724,9 @@ HSAReceiptAnalyzerAI/
 
 - Check application logs for detailed error messages
 - Enable debug logging in appsettings.Development.json
-- Review the sample data in Data/multiple_users.json
+- Review the enhanced sample data in Data/multiple_users.json
 - Test API endpoints using Swagger UI at /swagger
+- **NEW**: Review item validation logs for HSA eligibility debugging
 
 ## :handshake: Contributing
 
@@ -571,6 +735,13 @@ HSAReceiptAnalyzerAI/
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Enhancement Guidelines ⭐ NEW
+- Follow the RAG-first approach for new fraud detection features
+- Include item validation considerations in new fraud patterns
+- Maintain backward compatibility with existing endpoints
+- Add comprehensive logging for debugging capabilities
+- Update documentation for new features
 
 ## :page_facing_up: License
 
@@ -584,4 +755,4 @@ WEX Inc. is a leading financial technology service provider. This HSA Receipt An
 
 **Built with :sparkles: by the WEX Technology Team**
 
-*Your fraud detection system now has institutional memory and can reason about new cases in the context of historical patterns.*
+*Your fraud detection system now has institutional memory, can reason about new cases in the context of historical patterns, and intelligently validates HSA item eligibility - providing comprehensive fraud protection with human-level reasoning capabilities.*

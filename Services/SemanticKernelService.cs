@@ -57,32 +57,59 @@ namespace HSAReceiptAnalyzer.Services
             // Build the kernel
             _kernel = builder.Build();
 
+            // Enhanced fraud analysis prompt for better user-facing responses
             string prompt = @"
-You are a financial claims fraud detection assistant.
+You are an expert HSA (Health Savings Account) fraud detection assistant analyzing a medical claim.
 
-You will be given:
-- Receipt details extracted from OCR
-- Claim details from the database
-- Machine Learning anomaly score (0 to 1) and fraud flag
+**Claim Information:**
+- Date of Service: {{$Date}}
+- Amount: ${{$Amount}}
+- Merchant: {{$Merchant}}
+- Description: {{$Description}}
+- Submission Date: {{$SubmissionDate}}
+- Patient Name: {{$Name}}
+- Items: {{$Items}}
+- Flags: {{$Flags}}
+- Is Fraudulent (ML): {{$IsFradulent}}
 
-Tasks:
-1. Summarize the claim in plain language.
-2. Explain why this claim might be suspicious based on the data provided.
-3. Identify any patterns that match known fraud schemes:
-   - Shared receipt used by multiple users
-   - Unusual claim amount for service type
-   - High frequency claims in short period
-   - Service location mismatch with user address
-   - Duplicate claim IDs or receipt IDs
-4. Provide a risk score from 0 to 100.
-5. Suggest what the claims reviewer should check next.
+**Historical Context:**
+{{$History}}
 
-Data:
-{{$receiptData}}
+**Your Analysis Tasks:**
+1. **Claim Summary**: Summarize the claim in clear, professional language
+2. **Risk Assessment**: Evaluate fraud risk based on the data provided
+3. **Pattern Detection**: Identify suspicious patterns such as:
+   - Duplicate receipts across multiple users
+   - Unusual amounts for the service type
+   - High frequency of claims in short periods
+   - Geographic inconsistencies
+   - Suspicious vendor/merchant relationships
+   - Round dollar amounts that may indicate fabrication
+4. **HSA Eligibility**: Assess if items/services are HSA-eligible
+5. **Recommendations**: Suggest next steps for claims reviewers
 
-Fraud detection result: {{$isFraud}}
-Anomaly score: {{$anomalyScore}}
+**Response Format:**
+Provide your analysis in a clear, professional format that can be read by both claims reviewers and customers. Use bullet points for key findings and include a confidence level (Low/Medium/High) for your assessment.
 
+**Example Response Structure:**
+## Claim Analysis Summary
+[Brief overview of the claim]
+
+## Risk Assessment: [Low/Medium/High Risk]
+[Explanation of risk level and reasoning]
+
+## Key Findings:
+• [Finding 1]
+• [Finding 2]
+• [Finding 3]
+
+## HSA Eligibility Assessment:
+[Assessment of whether items are HSA-eligible]
+
+## Recommended Actions:
+[Specific recommendations for claims processing]
+
+Please provide a thorough but concise analysis.
 ";
 
             // Initialize _fraudFunction in a local variable and assign it to the readonly field
@@ -173,29 +200,22 @@ End your response with the question:
 
         public async Task<string> AnalyzeReceiptAsync(Claim data)
         {
-            // Create a database connection (assuming SqliteConnection is used)
-            var connection = new SqliteConnection($"Data Source=ClaimsDB.sqlite");
-            connection.Open();
-            var arguments = new KernelArguments();
-
             // Pass the connection and UserId to GetClaims
             var historyClaims = _claimDatabaseManager.GetAllClaims();
-
             var historySummary = BuildHistorySummary(historyClaims);
 
-            arguments = new KernelArguments
+            var arguments = new KernelArguments
             {
-                ["Date"] = data.DateOfService,
-                ["Amount"] = data.Amount,
-                ["Merchant"] = data.Merchant,
-                ["Description"] = data.Description,
-                ["SubmissionDate"] = data.SubmissionDate,
-                ["Name"] = data.Name,
-                ["Flags"] = data.Flags,
-                ["IsFradulent"] = data.IsFraudulent,
-                ["Items"] = data.Items,
+                ["Date"] = data.DateOfService.ToString("yyyy-MM-dd"),
+                ["Amount"] = data.Amount.ToString("F2"),
+                ["Merchant"] = data.Merchant ?? "Unknown",
+                ["Description"] = data.Description ?? "No description provided",
+                ["SubmissionDate"] = data.SubmissionDate.ToString("yyyy-MM-dd HH:mm"),
+                ["Name"] = data.Name ?? "Unknown",
+                ["Flags"] = data.Flags ?? "None",
+                ["IsFradulent"] = data.IsFraudulent.ToString(),
+                ["Items"] = string.Join(", ", data.Items ?? new List<string>()),
                 ["History"] = historySummary
-
             };
 
             var result = await _fraudFunction.InvokeAsync(_kernel, arguments);
@@ -205,9 +225,23 @@ End your response with the question:
         public string BuildHistorySummary(List<Claim> claims)
         {
             var sb = new StringBuilder();
-            foreach (var claim in claims)
+            sb.AppendLine("Recent Claims History (Last 10 claims):");
+            
+            var recentClaims = claims
+                .OrderByDescending(c => c.SubmissionDate)
+                .Take(10)
+                .ToList();
+                
+            if (!recentClaims.Any())
             {
-                sb.AppendLine($"- Date: {claim.DateOfService}, Amount: ${claim.Amount}, Merchant: {claim.Merchant}, Description: {claim.Description}, IsFraudulent: {claim.IsFraudulent}");
+                sb.AppendLine("No previous claims found.");
+                return sb.ToString();
+            }
+            
+            foreach (var claim in recentClaims)
+            {
+                var fraudStatus = claim.IsFraudulent == 1 ? "FRAUDULENT" : "Normal";
+                sb.AppendLine($"- Date: {claim.DateOfService:yyyy-MM-dd}, Amount: ${claim.Amount:F2}, Merchant: {claim.Merchant}, Status: {fraudStatus}");
             }
             return sb.ToString();
         }
@@ -941,8 +975,6 @@ End your response with the question:
     }
 
 }
-
-
 
 
 

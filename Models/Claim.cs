@@ -26,6 +26,12 @@ namespace HSAReceiptAnalyzer.Models
             public string VendorId { get; set; }
             public string IPAddress { get; set; }
             public string ReceiptHash { get; set; }
+            
+            // Item validation properties for HSA eligibility scoring
+            public float ItemValidationScore { get; set; } // 0-100 score based on how well items match allowed HSA list
+            public List<string> ValidItems { get; set; } = new List<string>(); // Items that match HSA-eligible list
+            public List<string> InvalidItems { get; set; } = new List<string>(); // Items that don't match HSA-eligible list
+            public string ItemValidationNotes { get; set; } // Additional notes about item validation
         }
 
     public class ClaimFeatures
@@ -51,7 +57,7 @@ namespace HSAReceiptAnalyzer.Models
         [ColumnName("PredictedLabel")]
         public bool IsAnomaly { get; set; }
 
-        // Larger usually means “more anomalous”
+        // Larger usually means "more anomalous"
         public float Score { get; set; }
     }
 }

@@ -10,13 +10,15 @@ namespace HSAReceiptAnalyzer.Services
     public class FraudDetectionService : IFraudDetectionService
     {
         private readonly IClaimDatabaseManager _claimDatabaseManager;
+        private readonly ISemanticKernelService _semanticKernelService;
         private readonly MLContext _mlContext;
         private readonly ITransformer _model;
         private readonly PredictionEngine<ClaimFeatures, FraudPrediction> _predictionEngine;
 
-        public FraudDetectionService(IClaimDatabaseManager claimDatabaseManager) {
+        public FraudDetectionService(IClaimDatabaseManager claimDatabaseManager, ISemanticKernelService semanticKernelService) {
 
             _claimDatabaseManager = claimDatabaseManager;
+            _semanticKernelService = semanticKernelService;
             _mlContext = new MLContext();
 
             var modelPath = Path.Combine(AppContext.BaseDirectory, "fraudModel.zip");
@@ -31,8 +33,40 @@ namespace HSAReceiptAnalyzer.Services
             // Convert claim to features
             var claimFeatures = MapToClaimFeatures(claim, includeLabel: false);
 
-            // Rule check: duplicate receipt across users
+            // Rule check 1: duplicate receipt across users
             bool duplicateFound = _claimDatabaseManager.ExistsDuplicate(claim.ReceiptHash, claim.UserId);
+
+            // Rule check 2: invalid HSA items detection
+            bool invalidItemsDetected = false;
+            string invalidItemsReason = "";
+            
+            // Check for extremely low validation scores
+            if (claim.ItemValidationScore < 20)
+            {
+                invalidItemsDetected = true;
+                invalidItemsReason = $"Extremely low item validation score ({claim.ItemValidationScore:F1}%)";
+            }
+            // Check for high ratio of invalid items
+            else if (claim.InvalidItems?.Count > 0 && claim.Items?.Count > 0)
+            {
+                var invalidRatio = (float)claim.InvalidItems.Count / claim.Items.Count;
+                if (invalidRatio >= 0.7f) // 70% or more invalid items
+                {
+                    invalidItemsDetected = true;
+                    invalidItemsReason = $"High invalid items ratio ({invalidRatio:P0})";
+                }
+            }
+            // Check for clearly prohibited items
+            var prohibitedItems = new[] { "alcohol", "beer", "wine", "cigarettes", "tobacco", "candy", "soda", "chips", "cosmetics" };
+            var foundProhibited = claim.InvalidItems?.Where(item => 
+                prohibitedItems.Any(prohibited => item.Contains(prohibited, StringComparison.OrdinalIgnoreCase))
+            ).ToList() ?? new List<string>();
+            
+            if (foundProhibited.Any())
+            {
+                invalidItemsDetected = true;
+                invalidItemsReason = $"Contains prohibited items: {string.Join(", ", foundProhibited)}";
+            }
 
             // Run ML prediction (supervised)
             var mlPrediction = _predictionEngine.Predict(claimFeatures);
@@ -40,29 +74,98 @@ namespace HSAReceiptAnalyzer.Services
             // ML fraud score as %
             float mlScore = mlPrediction.Probability * 100;
 
-            // Rule score if duplicate
-            float ruleScore = duplicateFound ? 95f : 0f;
+            // Rule scores
+            float duplicateRuleScore = duplicateFound ? 95f : 0f;
+            float invalidItemsRuleScore = invalidItemsDetected ? 85f : 0f;
 
-            // Final score: whichever is stronger
-            float finalScore = Math.Max(mlScore, ruleScore);
+            // Item validation score (0-100, where lower scores indicate potential fraud)
+            float itemValidationScore = claim.ItemValidationScore;
+            
+            // Convert item validation score to fraud risk (inverse relationship)
+            float itemFraudScore = 0f;
+            if (itemValidationScore < 30)
+            {
+                itemFraudScore = 80f; // High fraud risk for very low validation scores
+            }
+            else if (itemValidationScore < 50)
+            {
+                itemFraudScore = 60f; // Medium fraud risk for low validation scores
+            }
+            else if (itemValidationScore < 70)
+            {
+                itemFraudScore = 30f; // Low fraud risk for moderate validation scores
+            }
+            // else itemFraudScore remains 0 for high validation scores (70+)
 
-            // Fraud decision: either ML thinks fraudulent or rules triggered
-            bool isFraudulent = mlPrediction.IsFraudulent || duplicateFound || finalScore >= 75;
+            // Final score: take the maximum of all fraud detection methods
+            float finalScore = Math.Max(Math.Max(Math.Max(mlScore, duplicateRuleScore), invalidItemsRuleScore), itemFraudScore);
 
-            // Build result
+            // Fraud decision: fraud if any detection method triggers
+            bool isFraudulent = mlPrediction.IsFraudulent || duplicateFound || invalidItemsDetected || finalScore >= 75 || itemValidationScore < 30;
+
+            // Build comprehensive explanation with priority order
+            string explanation = "";
+            if (duplicateFound)
+            {
+                explanation = "⚠ Duplicate receipt hash found across users.";
+            }
+            else if (invalidItemsDetected)
+            {
+                explanation = $"⚠ Invalid HSA items detected: {invalidItemsReason}";
+            }
+            else if (itemValidationScore < 30)
+            {
+                explanation = $"⚠ Poor item validation score ({itemValidationScore:F1}%) - contains non-HSA eligible items.";
+            }
+            else if (mlPrediction.IsFraudulent)
+            {
+                explanation = $"⚠ ML classified as fraudulent ({mlScore:F2}%).";
+            }
+            else if (itemValidationScore < 70)
+            {
+                explanation = $"⚠ Moderate item validation concerns ({itemValidationScore:F1}%) combined with other risk factors.";
+            }
+            else
+            {
+                explanation = "✅ Claim appears normal.";
+            }
+
+            // Build result with enhanced rule scoring
             return new FraudResult
             {
                 ClaimId = claim.ClaimId,
                 IsFraudulent = isFraudulent,
                 MlScore = mlScore,
-                RuleScore = ruleScore,
+                RuleScore = Math.Max(duplicateRuleScore, invalidItemsRuleScore), // Highest rule score
                 FinalFraudScore = finalScore,
-                Explanation = duplicateFound
-                    ? "⚠ Duplicate receipt hash found across users."
-                    : (mlPrediction.IsFraudulent
-                        ? $"⚠ ML classified as fraudulent ({mlScore:F2}%)."
-                        : "✅ Claim appears normal.")
+                Explanation = explanation,
+                // Add additional context about item validation
+                ItemValidationScore = itemValidationScore,
+                ItemValidationDetails = !string.IsNullOrEmpty(claim.ItemValidationNotes) ? claim.ItemValidationNotes : 
+                    (invalidItemsDetected ? $"Item validation failed: {invalidItemsReason}" : "")
             };
+        }
+
+        public async Task<FraudResult> PredictWithAIAnalysisAsync(Claim claim)
+        {
+            // Get the standard ML prediction
+            var standardResult = Predict(claim);
+
+            try
+            {
+                // Generate AI analysis using SemanticKernelService
+                var aiAnalysis = await _semanticKernelService.AnalyzeReceiptAsync(claim);
+                
+                // Add AI analysis to the result
+                standardResult.AIAnalysis = aiAnalysis;
+            }
+            catch (Exception ex)
+            {
+                // If AI analysis fails, use fallback message
+                standardResult.AIAnalysis = $"AI analysis unavailable: {ex.Message}";
+            }
+
+            return standardResult;
         }
 
         public string TrainModel()
@@ -96,7 +199,8 @@ namespace HSAReceiptAnalyzer.Services
                 nameof(ClaimFeatures.ItemCount),
                 nameof(ClaimFeatures.DistinctItemsRatio),
                 nameof(ClaimFeatures.ReceiptHashDuplicateCount),
-                nameof(ClaimFeatures.ReceiptHashFrequencyForUser)
+                nameof(ClaimFeatures.ReceiptHashFrequencyForUser),
+                nameof(ClaimFeatures.ItemValidationScore) // Include item validation score in training
             };
 
             // OPTIMIZATION 4: Optimized LightGBM parameters for faster training
@@ -148,7 +252,8 @@ namespace HSAReceiptAnalyzer.Services
                 ItemCount = claim.Items?.Count ?? 0,
                 DistinctItemsRatio = CalculateDistinctItemRatio(claim.Items),
                 ReceiptHashDuplicateCount = Math.Max(0f, receiptHashLookup[claim.ReceiptHash].FirstOrDefault() - 1),
-                ReceiptHashFrequencyForUser = CalculateReceiptHashFrequencyOptimized(userClaims, claim.ReceiptHash)
+                ReceiptHashFrequencyForUser = CalculateReceiptHashFrequencyOptimized(userClaims, claim.ReceiptHash),
+                ItemValidationScore = claim.ItemValidationScore // Include item validation score
             };
 
             if (includeLabel)
@@ -221,6 +326,7 @@ namespace HSAReceiptAnalyzer.Services
                 DistinctItemsRatio = CalculateDistinctItemRatio(claim.Items),
                 ReceiptHashDuplicateCount = CalculateReceiptHashDuplicateCount(claim.ReceiptHash),
                 ReceiptHashFrequencyForUser = CalculateReceiptHashFrequencyForUser(claim.UserId, claim.ReceiptHash),
+                ItemValidationScore = claim.ItemValidationScore // Include item validation score
             };
 
             if (includeLabel)
