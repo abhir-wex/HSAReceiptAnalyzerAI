@@ -1,4 +1,4 @@
-# HSA Receipt Analyzer with RAG Implementation :microscope: :file_folder:
+﻿# HSA Receipt Analyzer with RAG Implementation :microscope: :file_folder:
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org/)
@@ -40,12 +40,12 @@ This system revolutionizes fraud detection by combining:
 
 ### 1. **Contextual Fraud Analysis**
 - **What it does**: When analyzing a new claim, RAG searches through historical fraud cases to find similar patterns
-- **Real example**: New claim for $250 at "HealthMart Pharmacy" � RAG finds 3 similar fraud cases at same merchant with round amounts
+- **Real example**: New claim for $250 at "HealthMart Pharmacy" — RAG finds 3 similar fraud cases at same merchant with round amounts
 - **Business value**: Provides investigators with specific historical context instead of generic ML scores
 
 ### 2. **Expert Knowledge Retention**
 - **What it does**: Captures and retains fraud investigation expertise in a searchable knowledge base
-- **Real example**: Experienced fraud analyst retires � Their knowledge of specific fraud schemes remains accessible through RAG
+- **Real example**: Experienced fraud analyst retires — Their knowledge of specific fraud schemes remains accessible through RAG
 - **Business value**: Institutional knowledge preservation and consistent fraud detection quality
 
 ### 3. **Pattern Evolution Detection**
@@ -456,26 +456,26 @@ The RAG system automatically indexes:
 
 ```
 HSAReceiptAnalyzerAI/
-??? Controllers/           # API controllers
-?   ??? AnalyzeController.cs       # Traditional fraud detection
-?   ??? RAGAnalyzeController.cs    # RAG-enhanced endpoints
-?   ??? ClaimDatabaseController.cs # Database management
-??? Services/             # Business logic services
-?   ??? RAGService.cs              # RAG implementation
-?   ??? FraudDetectionService.cs   # ML fraud detection
-?   ??? SemanticKernelService.cs   # AI prompt handling
-?   ??? FormRecognizerService.cs   # Receipt OCR
-??? Models/               # Data models
-?   ??? Claim.cs                   # Core claim model
-?   ??? FraudKnowledgeEntry.cs     # RAG knowledge model
-?   ??? RAGAnalysisResult.cs       # RAG analysis results
-??? Data/                 # Data layer
-?   ??? ClaimDatabaseManager.cs    # Database operations
-?   ??? multiple_users.json       # Sample fraud data
-??? Frontend/frontend/    # React application
-?   ??? src/                       # React source code
-?   ??? public/                    # Static assets
-??? wwwroot/             # Built React app (production)
+├── Controllers/           # API controllers
+│   ├── AnalyzeController.cs       # Traditional fraud detection
+│   ├── RAGAnalyzeController.cs    # RAG-enhanced endpoints
+│   └── ClaimDatabaseController.cs # Database management
+├── Services/             # Business logic services
+│   ├── RAGService.cs              # RAG implementation
+│   ├── FraudDetectionService.cs   # ML fraud detection
+│   ├── SemanticKernelService.cs   # AI prompt handling
+│   └── FormRecognizerService.cs   # Receipt OCR
+├── Models/               # Data models
+│   ├── Claim.cs                   # Core claim model
+│   ├── FraudKnowledgeEntry.cs     # RAG knowledge model
+│   └── RAGAnalysisResult.cs       # RAG analysis results
+├── Data/                 # Data layer
+│   ├── ClaimDatabaseManager.cs    # Database operations
+│   └── multiple_users.json        # Sample fraud data
+├── Frontend/frontend/    # React application
+│   ├── src/                       # React source code
+│   └── public/                    # Static assets
+└── wwwroot/             # Built React app (production)
 ```
 
 ### Key Dependencies
