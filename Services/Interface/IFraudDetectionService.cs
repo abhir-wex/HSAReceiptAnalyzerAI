@@ -7,5 +7,6 @@ namespace HSAReceiptAnalyzer.Services.Interface
         string TrainModel();
         Task<string> TrainModelAsync();
         FraudResult Predict(Claim claim);
+        Task<FraudResult> PredictWithAIAnalysisAsync(Claim claim);
     }
 }
