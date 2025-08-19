@@ -1,4 +1,4 @@
-# ?? HSA Receipt Analyzer with RAG Implementation
+# HSA Receipt Analyzer with RAG Implementation :microscope: :file_folder:
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org/)
@@ -7,7 +7,7 @@
 
 A sophisticated **Healthcare Savings Account (HSA) receipt fraud detection system** that combines traditional Machine Learning with **Retrieval-Augmented Generation (RAG)** to provide intelligent, context-aware fraud analysis.
 
-## ?? Overview
+## :bulb: Overview
 
 This system revolutionizes fraud detection by combining:
 - **Traditional ML Models** (LightGBM) for pattern-based fraud detection
@@ -16,36 +16,36 @@ This system revolutionizes fraud detection by combining:
 - **Semantic Kernel** for intelligent fraud reasoning
 - **Real-time Learning** that improves with each fraud case
 
-## ? Key Features
+## :star: Key Features
 
-### ?? **Enhanced Fraud Detection**
+### :zap: **Enhanced Fraud Detection**
 - **Contextual Analysis**: "This $250 claim matches 3 historical fraud cases at HealthMart"
 - **Evidence-Based Decisions**: Specific historical patterns referenced in analysis
 - **Risk Factor Identification**: Round amounts, same-day submissions, IP anomalies
 - **Intelligent Recommendations**: "Cross-reference receipt hash across all users"
 
-### ?? **RAG-Powered Intelligence**
+### :rocket: **RAG-Powered Intelligence**
 - **Knowledge Base**: Automatically indexed fraud cases with contextual metadata
 - **Semantic Search**: Find similar fraud patterns across historical data
 - **Continuous Learning**: System gets smarter with each new fraud case
 - **Trend Analysis**: Identify evolving fraud schemes and emerging patterns
 
-### ?? **Comprehensive Analytics**
+### :bar_chart: **Comprehensive Analytics**
 - **Admin Dashboard**: Natural language queries about fraud patterns
 - **Fraud Trends**: "Show me round amount fraud patterns in the last 6 months"
 - **Merchant Risk Analysis**: Historical fraud rates by merchant
 - **Pattern Evolution**: Track how fraud schemes change over time
 
-## ?? Real-World RAG Use Cases
+## :mag: Real-World RAG Use Cases
 
 ### 1. **Contextual Fraud Analysis**
 - **What it does**: When analyzing a new claim, RAG searches through historical fraud cases to find similar patterns
-- **Real example**: New claim for $250 at "HealthMart Pharmacy" ? RAG finds 3 similar fraud cases at same merchant with round amounts
+- **Real example**: New claim for $250 at "HealthMart Pharmacy" — RAG finds 3 similar fraud cases at same merchant with round amounts
 - **Business value**: Provides investigators with specific historical context instead of generic ML scores
 
 ### 2. **Expert Knowledge Retention**
 - **What it does**: Captures and retains fraud investigation expertise in a searchable knowledge base
-- **Real example**: Experienced fraud analyst retires ? Their knowledge of specific fraud schemes remains accessible through RAG
+- **Real example**: Experienced fraud analyst retires — Their knowledge of specific fraud schemes remains accessible through RAG
 - **Business value**: Institutional knowledge preservation and consistent fraud detection quality
 
 ### 3. **Pattern Evolution Detection**
@@ -53,7 +53,7 @@ This system revolutionizes fraud detection by combining:
 - **Real example**: "SharedReceiptAcrossUsers" pattern evolving to include IP address manipulation
 - **Business value**: Proactive fraud prevention and early detection of emerging schemes
 
-## ??? Architecture
+## :triangular_flag_on_post: Architecture
 
 ```
 +---------------------+    +---------------------+    +---------------------+
@@ -106,7 +106,7 @@ This system revolutionizes fraud detection by combining:
 +---------------------+
 ```
 
-## ?? Getting Started
+## :rocket: Getting Started
 
 ### Prerequisites
 
@@ -203,9 +203,9 @@ info: Found X fraud cases to index
 info: RAG Knowledge Base initialized successfully
 ```
 
-## ?? API Endpoints
+## :link: API Endpoints
 
-### ?? RAG-Enhanced Endpoints
+### :rocket: RAG-Enhanced Endpoints
 
 #### `POST /api/RAGAnalyze/enhanced-fraud-check`
 **RAG-enhanced fraud analysis with historical context**
@@ -293,7 +293,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
 #### `POST /api/RAGAnalyze/rebuild-knowledge-base`
 **Rebuild the RAG knowledge base**
 
-## ?? RAG vs Traditional Analysis Comparison
+## :chart_with_upwards_trend: RAG vs Traditional Analysis Comparison
 
 ### Before RAG (Traditional):
 ```json
@@ -318,7 +318,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
 }
 ```
 
-## ?? Real Use Case Example
+## :mag_right: Real Use Case Example
 
 ### Scenario: Investigating Suspicious $250 Claim
 
@@ -330,7 +330,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
 2. **RAG Analysis Process**:
    ```
    Search Query: "HealthMart Pharmacy $250 Medical Equipment"
-   ?
+   
    Knowledge Base Search Results:
    - 92% relevance: Previous fraud at HealthMart for $250 (SharedReceiptAcrossUsers)
    - 88% relevance: Round amount fraud pattern at HealthMart
@@ -345,16 +345,16 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
    Recommended Action: Contact HealthMart to verify transaction authenticity
    ```
 
-## ?? Configuration
+## :gear: Configuration
 
 ### Key Configuration Sections
 
 | Setting | Description | Required |
 |---------|-------------|----------|
-| `WEXOpenAI:Endpoint` | WEX AI Gateway endpoint | ? |
-| `WEXOpenAI:Key` | WEX API key | ? |
-| `FormRecognizer:Endpoint` | Azure Form Recognizer endpoint | ?? Optional |
-| `FormRecognizer:Key` | Azure Form Recognizer key | ?? Optional |
+| `WEXOpenAI:Endpoint` | WEX AI Gateway endpoint | :white_check_mark: |
+| `WEXOpenAI:Key` | WEX API key | :white_check_mark: |
+| `FormRecognizer:Endpoint` | Azure Form Recognizer endpoint | :grey_exclamation: Optional |
+| `FormRecognizer:Key` | Azure Form Recognizer key | :grey_exclamation: Optional |
 
 ### Database Configuration
 
@@ -382,7 +382,7 @@ using (var scope = app.Services.CreateScope())
 }
 ```
 
-## ?? Testing the System
+## :white_check_mark: Testing the System
 
 ### 1. Test Enhanced Fraud Detection
 
@@ -404,7 +404,7 @@ using (var scope = app.Services.CreateScope())
 
 Use API tools like Postman or curl to test the RAG endpoints directly.
 
-## ?? Sample Data
+## :floppy_disk: Sample Data
 
 The system includes comprehensive sample data:
 - **500+ claims** across multiple users
@@ -415,14 +415,14 @@ The system includes comprehensive sample data:
 ### RAG Knowledge Base Content
 
 The RAG system automatically indexes:
-- ? **Confirmed Fraud Cases** from your `multiple_users.json`
-- ? **Fraud Templates**: SharedReceiptAcrossUsers, RoundAmountPattern, etc.
-- ? **Merchant Risk Patterns**: HealthMart, PharmaPoint, MediShop cases
-- ? **Geographic Anomalies**: Location-based fraud indicators
-- ? **Temporal Patterns**: Time-based fraud behaviors
-- ? **IP Address Clustering**: Network-based fraud detection
+- :white_check_mark: **Confirmed Fraud Cases** from your `multiple_users.json`
+- :white_check_mark: **Fraud Templates**: SharedReceiptAcrossUsers, RoundAmountPattern, etc.
+- :white_check_mark: **Merchant Risk Patterns**: HealthMart, PharmaPoint, MediShop cases
+- :white_check_mark: **Geographic Anomalies**: Location-based fraud indicators
+- :white_check_mark: **Temporal Patterns**: Time-based fraud behaviors
+- :white_check_mark: **IP Address Clustering**: Network-based fraud detection
 
-## ?? Fraud Detection Capabilities
+## :shield: Fraud Detection Capabilities
 
 ### Traditional ML Detection
 - **Round amount patterns** ($100, $250, $500)
@@ -436,7 +436,7 @@ The RAG system automatically indexes:
 - **Evidence-based recommendations** with specific actions
 - **Merchant risk profiling** using historical fraud rates
 
-## ?? Business Impact
+## :trophy: Business Impact
 
 ### Immediate Benefits:
 - **Enhanced Accuracy**: Combined ML + RAG provides more accurate fraud detection
@@ -450,7 +450,7 @@ The RAG system automatically indexes:
 - **Institutional Knowledge**: Preserves investigator expertise
 - **Proactive Prevention**: Trend analysis enables preventive measures
 
-## ??? Development
+## :construction: Development
 
 ### Project Structure
 
@@ -510,7 +510,7 @@ HSAReceiptAnalyzerAI/
 3. **Update knowledge indexing** to include new metadata
 4. **Test with sample data** to verify detection
 
-## ?? Deployment
+## :rocket: Deployment
 
 ### Development
 - Backend: `dotnet run` (https://localhost:7041)
@@ -522,7 +522,7 @@ HSAReceiptAnalyzerAI/
 - Deploy .NET application to your preferred hosting service
 - Configure environment variables for API keys
 
-## ?? Security Considerations
+## :lock: Security Considerations
 
 - **API Keys**: Never commit API keys to source control
 - **User Secrets**: Use `dotnet user-secrets` for development
@@ -530,7 +530,7 @@ HSAReceiptAnalyzerAI/
 - **CORS**: Configure appropriate origins for production
 - **HTTPS**: Always use HTTPS in production
 
-## ?? Troubleshooting
+## :wrench: Troubleshooting
 
 ### Common Issues
 
@@ -564,7 +564,7 @@ HSAReceiptAnalyzerAI/
 - Review the sample data in Data/multiple_users.json
 - Test API endpoints using Swagger UI at /swagger
 
-## ?? Contributing
+## :handshake: Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -572,16 +572,16 @@ HSAReceiptAnalyzerAI/
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## ?? License
+## :page_facing_up: License
 
 This project is proprietary software developed for WEX Inc.
 
-## ?? About WEX
+## :office: About WEX
 
 WEX Inc. is a leading financial technology service provider. This HSA Receipt Analyzer demonstrates WEX's commitment to innovation in healthcare financial services and fraud prevention.
 
 ---
 
-**Built with ?? by the WEX Technology Team**
+**Built with :sparkles: by the WEX Technology Team**
 
 *Your fraud detection system now has institutional memory and can reason about new cases in the context of historical patterns.*
