@@ -329,7 +329,7 @@ function StartPage() {
         }
       }
       
-      const response = await fetch("/Analyze/fraud-check", {
+      const response = await fetch("api/RAGAnalyze/enhanced-fraud-check", {
         method: "POST",
         body: formData,
       });
