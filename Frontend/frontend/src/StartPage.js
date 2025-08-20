@@ -113,6 +113,21 @@ const FraudScoreMeter = ({ score }) => {
   );
   };
 
+// Loading Spinner Component
+const LoadingSpinner = ({ isVisible, message = "Processing...", subMessage = "Please wait while we analyze your request" }) => {
+  if (!isVisible) return null;
+
+  return (
+    <div className="loading-overlay">
+      <div className="spinner-container">
+        <div className="main-spinner"></div>
+        <p className="spinner-text">{message}</p>
+        <p className="spinner-subtext">{subMessage}</p>
+      </div>
+    </div>
+  );
+};
+
 const initialClaims = [
   {
     userId: "USR001",
@@ -177,6 +192,43 @@ function StartPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [filterBy, setFilterBy] = useState("all");
+  
+  // Loading spinner state
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Processing...");
+  const [loadingSubMessage, setLoadingSubMessage] = useState("Please wait while we analyze your request");
+
+  // Loading spinner control functions
+  const showSpinner = (message = "Processing...", subMessage = "Please wait while we analyze your request") => {
+    setLoadingMessage(message);
+    setLoadingSubMessage(subMessage);
+    setIsLoading(true);
+  };
+
+  const hideSpinner = () => {
+    setIsLoading(false);
+  };
+
+  // Simulate processing delay for search/filter/sort operations
+  const simulateProcessing = async (operation, delay = 800) => {
+    switch(operation) {
+      case 'search':
+        showSpinner("Searching Claims...", "Filtering through transaction records");
+        break;
+      case 'filter':
+        showSpinner("Applying Filters...", "Categorizing claims by risk level");
+        break;
+      case 'sort':
+        showSpinner("Sorting Results...", "Organizing claims by selected criteria");
+        break;
+      default:
+        showSpinner();
+    }
+    
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, delay));
+    hideSpinner();
+  };
 
   // Predefined sequential questions for the chatbot
   const predefinedPrompts = {
@@ -223,6 +275,30 @@ function StartPage() {
     }
   };
 
+  // Enhanced search handler with loading
+  const handleSearchChange = async (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    if (value.length > 0) {
+      await simulateProcessing('search', 600);
+    }
+  };
+
+  // Enhanced filter handler with loading
+  const handleFilterChange = async (e) => {
+    const value = e.target.value;
+    setFilterBy(value);
+    await simulateProcessing('filter', 500);
+  };
+
+  // Enhanced sort handler with loading
+  const handleSortChange = async (e) => {
+    const value = e.target.value;
+    setSortBy(value);
+    await simulateProcessing('sort', 400);
+  };
+
   // Filter and sort claims
   const filteredAndSortedClaims = claims
     .filter(claim => {
@@ -250,6 +326,7 @@ function StartPage() {
     if (!adminPrompt.trim()) return;
 
     setAdminLoading(true);
+    showSpinner("Analyzing Claims Data...", "AI is processing your fraud detection request");
     
     try {
       const response = await fetch("/Analyze/adminAnalyze", {
@@ -266,6 +343,7 @@ function StartPage() {
       setAdminResponse("Error processing admin request. Please try again.");
     } finally {
       setAdminLoading(false);
+      hideSpinner();
     }
   };
 
@@ -293,6 +371,7 @@ function StartPage() {
     }
     
     setIsSubmitting(true);
+    showSpinner("Analyzing Receipt...", "AI is processing your claim for fraud detection");
     
     // Create FormData and explicitly add all form fields
     const formData = new FormData();
@@ -383,11 +462,19 @@ function StartPage() {
       setResultVisible(true);
     } finally {
       setIsSubmitting(false);
+      hideSpinner();
     }
   };
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-blue-50 text-gray-900 min-h-screen">
+      {/* Loading Spinner Overlay */}
+      <LoadingSpinner 
+        isVisible={isLoading} 
+        message={loadingMessage} 
+        subMessage={loadingSubMessage} 
+      />
+
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -486,7 +573,7 @@ function StartPage() {
                     type="text"
                     placeholder="Search by User ID, Merchant, or Description..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchChange}
                     className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-blue-300 focus:border-blue-500 transition-all bg-white/80 shadow-sm hover:shadow-md text-gray-700 placeholder-gray-400"
                   />
                 </div>
@@ -502,7 +589,7 @@ function StartPage() {
                   <div className="relative">
                     <select
                       value={filterBy}
-                      onChange={(e) => setFilterBy(e.target.value)}
+                      onChange={handleFilterChange}
                       className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-blue-300 focus:border-blue-500 transition-all bg-white/80 shadow-sm hover:shadow-md appearance-none text-gray-700 font-medium"
                     >
                       <option value="all">All Risk Levels</option>
@@ -521,7 +608,7 @@ function StartPage() {
                   <div className="relative">
                     <select
                       value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
+                      onChange={handleSortChange}
                       className="w-full px-4 py-4 border-2 border-gray-200 rounded-xl focus:ring-3 focus:ring-blue-300 focus:border-blue-500 transition-all bg-white/80 shadow-sm hover:shadow-md appearance-none text-gray-700 font-medium"
                     >
                       <option value="date">Date (Newest First)</option>
@@ -723,8 +810,9 @@ function StartPage() {
                 <button
                   type="submit"
                   className="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold"
+                  disabled={isSubmitting}
                 >
-                  � Analyze & Submit
+                  🔍 Analyze & Submit
                 </button>
               </div>
               </form>
@@ -749,7 +837,7 @@ function StartPage() {
               <div className="mb-6 p-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-lg">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-2xl font-bold text-blue-900 flex items-center">
-                    � Fraud Analysis Report
+                    🔍 Fraud Analysis Report
                   </h3>
                   <button 
                     onClick={() => setResultVisible(false)}
