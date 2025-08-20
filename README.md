@@ -158,7 +158,26 @@ cd HSAReceiptAnalyzerAI
 
 #### Configure API Keys
 
-**Option A: Using appsettings.json (Recommended for Development)**
+**⚠️ IMPORTANT**: The system prioritizes environment variables over appsettings.json values for security and flexibility.
+
+**Option A: Using Environment Variables (Recommended)**
+
+Create a `.env` file in the project root:
+
+```env
+# Azure Form Recognizer Configuration
+AZURE_FORM_RECOGNIZER_ENDPOINT=https://claimsai.cognitiveservices.azure.com/
+AZURE_FORM_RECOGNIZER_KEY=your_azure_key_here
+
+# WEX OpenAI Configuration
+WEX_OPENAI_ENDPOINT=https://aips-ai-gateway.ue1.dev.ai-platform.int.wexfabric.com/
+WEX_OPENAI_KEY=sk-your_wex_api_key_here
+
+# Alternative: Set these as system environment variables
+# Or add them to your IDE's environment variables for debugging
+```
+
+**Option B: Using appsettings.json (Fallback)**
 
 Update `appsettings.json` and `appsettings.Development.json`:
 
@@ -166,33 +185,29 @@ Update `appsettings.json` and `appsettings.Development.json`:
 {
   "WEXOpenAI": {
     "Endpoint": "https://aips-ai-gateway.ue1.dev.ai-platform.int.wexfabric.com/",
-    "Key": "YOUR_WEX_API_KEY_HERE"
+    "Key": "sk-your_wex_api_key_here"
   },
   "FormRecognizer": {
-    "Endpoint": "https://your-form-recognizer.cognitiveservices.azure.com/",
-    "Key": "YOUR_AZURE_KEY_HERE"
+    "Endpoint": "https://claimsai.cognitiveservices.azure.com/",
+    "Key": "your_azure_key_here"
   }
 }
-```
-
-**Option B: Using Environment Variables**
-
-Create a `.env` file in the project root:
-
-```env
-WEX_OPENAI_ENDPOINT=https://aips-ai-gateway.ue1.dev.ai-platform.int.wexfabric.com/
-WEX_OPENAI_KEY=your_wex_api_key_here
-AZURE_FORM_RECOGNIZER_ENDPOINT=your_azure_endpoint
-AZURE_FORM_RECOGNIZER_KEY=your_azure_key
 ```
 
 **Option C: Using User Secrets (Most Secure)**
 
 ```bash
 dotnet user-secrets init
-dotnet user-secrets set "WEXOpenAI:Key" "your_wex_api_key_here"
+dotnet user-secrets set "WEXOpenAI:Key" "sk-your_wex_api_key_here"
 dotnet user-secrets set "FormRecognizer:Key" "your_azure_key_here"
 ```
+
+#### Configuration Priority
+
+The system loads configuration in this order:
+1. **Environment Variables** (highest priority)
+2. **appsettings.json/appsettings.Development.json**
+3. **User Secrets** (via configuration system)
 
 #### Install Dependencies and Run
 
@@ -207,7 +222,7 @@ dotnet build
 dotnet run
 ```
 
-The API will be available at `https://localhost:7041` or `http://localhost:5041`
+The API will be available at `http://localhost:5290` or `https://localhost:7293`
 
 ### 3. Frontend Setup (React)
 
@@ -242,7 +257,7 @@ info: RAG Knowledge Base initialized successfully
 **Complete RAG-enhanced fraud analysis with item validation**
 
 ```bash
-curl -X POST "https://localhost:7041/api/RAGAnalyze/enhanced-fraud-check" \
+curl -X POST "http://localhost:5290/api/RAGAnalyze/enhanced-fraud-check" \
   -H "Content-Type: multipart/form-data" \
   -F "image=@receipt.jpg"
 ```
@@ -290,7 +305,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/enhanced-fraud-check" \
 **RAG-first admin analysis with pattern fallback**
 
 ```bash
-curl -X POST "https://localhost:7041/api/RAGAnalyze/contextual-admin-analysis" \
+curl -X POST "http://localhost:5290/api/RAGAnalyze/contextual-admin-analysis" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Show me fraud patterns at HealthMart Pharmacy with round amounts"}'
 ```
@@ -319,7 +334,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/contextual-admin-analysis" \
 **Combined RAG and Semantic Kernel analysis**
 
 ```bash
-curl -X POST "https://localhost:7041/api/RAGAnalyze/ai-analysis" \
+curl -X POST "http://localhost:5290/api/RAGAnalyze/ai-analysis" \
   -H "Content-Type: multipart/form-data" \
   -F "image=@receipt.jpg"
 ```
@@ -328,7 +343,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/ai-analysis" \
 **Retrieve categorized HSA-eligible items**
 
 ```bash
-curl -X GET "https://localhost:7041/api/RAGAnalyze/hsa-items"
+curl -X GET "http://localhost:5290/api/RAGAnalyze/hsa-items"
 ```
 
 **HSA Items Response:**
@@ -350,7 +365,7 @@ curl -X GET "https://localhost:7041/api/RAGAnalyze/hsa-items"
 **Analyze fraud trends using historical knowledge**
 
 ```bash
-curl -X POST "https://localhost:7041/api/RAGAnalyze/fraud-trends-analysis" \
+curl -X POST "http://localhost:5290/api/RAGAnalyze/fraud-trends-analysis" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Analyze fraud trends in the last 6 months"}'
 ```
@@ -359,7 +374,7 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/fraud-trends-analysis" \
 **Search for similar fraud patterns**
 
 ```bash
-curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
+curl -X POST "http://localhost:5290/api/RAGAnalyze/search-similar-cases" \
   -H "Content-Type: application/json" \
   -d '{
     "merchant": "HealthMart Pharmacy",
@@ -477,14 +492,33 @@ curl -X POST "https://localhost:7041/api/RAGAnalyze/search-similar-cases" \
 
 ## :gear: Enhanced Configuration
 
+### Configuration Priority and Loading
+
+The system uses a **priority-based configuration system** to ensure secure and flexible API key management:
+
+| Priority | Method | Use Case | Security Level |
+|----------|--------|----------|----------------|
+| 1 (Highest) | Environment Variables | Production, CI/CD | 🔒 High |
+| 2 | appsettings.json/Development.json | Development | ⚠️ Medium |
+| 3 | User Secrets | Local development | 🔒 High |
+
 ### Key Configuration Sections
 
-| Setting | Description | Required |
-|---------|-------------|----------|
-| `WEXOpenAI:Endpoint` | WEX AI Gateway endpoint | ✅ |
-| `WEXOpenAI:Key` | WEX API key | ✅ |
-| `FormRecognizer:Endpoint` | Azure Form Recognizer endpoint | ⚠️ Optional |
-| `FormRecognizer:Key` | Azure Form Recognizer key | ⚠️ Optional |
+| Setting | Description | Required | Example |
+|---------|-------------|----------|---------|
+| `WEX_OPENAI_ENDPOINT` | WEX AI Gateway endpoint | ✅ | `https://aips-ai-gateway.ue1.dev.ai-platform.int.wexfabric.com/` |
+| `WEX_OPENAI_KEY` | WEX API key (must start with 'sk-') | ✅ | `sk-KlkWuxHXQ5KNq8lyvtPu_g` |
+| `AZURE_FORM_RECOGNIZER_ENDPOINT` | Azure Form Recognizer endpoint | ⚠️ Optional | `https://claimsai.cognitiveservices.azure.com/` |
+| `AZURE_FORM_RECOGNIZER_KEY` | Azure Form Recognizer key | ⚠️ Optional | `your_azure_key_here` |
+
+### Configuration Validation
+
+The application includes enhanced validation to prevent common configuration issues:
+
+- ✅ **API Key Format Validation**: Ensures WEX API keys start with 'sk-'
+- ✅ **Placeholder Detection**: Prevents use of placeholder values like "YOUR_WEX_API_KEY_HERE"
+- ✅ **Environment Variable Priority**: Environment variables override appsettings.json values
+- ✅ **Debug Logging**: Configuration values are logged (safely) during startup
 
 ### Enhanced Database Configuration
 
@@ -499,12 +533,24 @@ The system uses SQLite by default with enhanced schemas:
 The enhanced RAG system automatically initializes on application startup:
 
 ```csharp
-// In Program.cs - Enhanced initialization
+// In Program.cs - Enhanced initialization with fallback
 using (var scope = app.Services.CreateScope())
 {
-    var ragService = scope.ServiceProvider.GetRequiredService<IRAGService>();
-    await ragService.InitializeKnowledgeBaseAsync(); // Indexes existing fraud cases
-    await ragService.BuildItemValidationRulesAsync(); // NEW: HSA item rules
+    try
+    {
+        var ragService = scope.ServiceProvider.GetRequiredService<IRAGService>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
+        logger.LogInformation("Initializing RAG Knowledge Base...");
+        await ragService.InitializeKnowledgeBaseAsync(); // Indexes existing fraud cases
+        logger.LogInformation("RAG Knowledge Base initialized successfully");
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to initialize RAG Knowledge Base");
+        // Continue startup even if RAG initialization fails
+    }
 }
 ```
 
@@ -668,35 +714,44 @@ HSAReceiptAnalyzerAI/
 ## :rocket: Enhanced Deployment
 
 ### Development
-- Backend: `dotnet run` (https://localhost:7041)
+- Backend: `dotnet run` (http://localhost:5290)
 - Frontend: `npm start` (http://localhost:3000)
-- **NEW**: Enhanced logging for item validation debugging
+- **NEW**: Enhanced logging for configuration and item validation debugging
 
 ### Production
 - Build React app: `npm run build` in Frontend/frontend
 - Copy build output to wwwroot/
 - Deploy .NET application to your preferred hosting service
-- Configure environment variables for API keys
+- Configure environment variables for API keys (recommended)
 - **NEW**: Ensure HSA item database is properly deployed
 
 ## :lock: Security Considerations
 
 - **API Keys**: Never commit API keys to source control
-- **User Secrets**: Use `dotnet user-secrets` for development
-- **Environment Variables**: Use for production deployment
+- **Environment Variables**: Use for production deployment (highest priority)
+- **User Secrets**: Use `dotnet user-secrets` for local development
+- **Configuration Priority**: Environment variables override appsettings.json
 - **CORS**: Configure appropriate origins for production
 - **HTTPS**: Always use HTTPS in production
 - **NEW**: HSA item data validation to prevent injection attacks
+- **NEW**: API key format validation to prevent placeholder usage
 
 ## :wrench: Enhanced Troubleshooting
 
 ### Common Issues
 
-**"WEX_OPENAI_KEY environment variable is not set"**
-- Configure your API key using one of the methods in the setup section
+**"WEX OpenAI API key contains placeholder text"**
+- Check that your environment variable `WEX_OPENAI_KEY` is set correctly
+- Ensure the API key starts with 'sk-'
+- Verify no placeholder text like "YOUR_WEX_API_KEY_HERE" is being used
+
+**"Authentication Error, LiteLLM Virtual Key expected"**
+- This indicates the WEX API key format is incorrect
+- Ensure your key starts with 'sk-' as required by the WEX AI Gateway
+- Check the debug logs to see which configuration source is being used
 
 **"Failed to initialize RAG Knowledge Base"**
-- Check that your WEX API key is valid
+- Check that your WEX API key is valid and properly formatted
 - Verify network connectivity to WEX AI Gateway
 - Application will continue to work without RAG features
 
@@ -704,6 +759,11 @@ HSAReceiptAnalyzerAI/
 - Verify HSA item database is properly loaded
 - Check FormRecognizer service configuration
 - Review item validation logs for debugging
+
+**Configuration not loading correctly**
+- Check the debug logs to see which configuration source is being used
+- Verify environment variables are set correctly
+- Remember: Environment variables take priority over appsettings.json
 
 **React app not loading**
 - Ensure Node.js 18+ is installed
@@ -715,17 +775,13 @@ HSAReceiptAnalyzerAI/
 - Ensure write permissions in project directory
 - Delete ClaimsDB1.sqlite to reset database
 
-**RAG analysis not working**
-- Check API key configuration in appsettings.json
-- Verify knowledge base initialization in startup logs
-- Test endpoints using Swagger UI
-
 ### Getting Help
 
 - Check application logs for detailed error messages
 - Enable debug logging in appsettings.Development.json
 - Review the enhanced sample data in Data/multiple_users.json
 - Test API endpoints using Swagger UI at /swagger
+- **NEW**: Review configuration debug logs for API key loading issues
 - **NEW**: Review item validation logs for HSA eligibility debugging
 
 ## :handshake: Contributing
@@ -742,6 +798,7 @@ HSAReceiptAnalyzerAI/
 - Maintain backward compatibility with existing endpoints
 - Add comprehensive logging for debugging capabilities
 - Update documentation for new features
+- Follow the configuration priority system for new settings
 
 ## :page_facing_up: License
 

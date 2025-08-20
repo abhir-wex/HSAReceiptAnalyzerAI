@@ -25,25 +25,29 @@ builder.Services.Configure<ClaimDatabaseOptions>(options =>
 Env.Load();
 var kernelBuilder = Kernel.CreateBuilder();
 
+
 // WEX Gateway configuration for Semantic Kernel
 string modelId = "azure-gpt-4o";
 
-// Get configuration from appsettings.json instead of environment variables
+// Get configuration from environment variables first, then fall back to appsettings.json
 var wexConfig = builder.Configuration.GetSection("WEXOpenAI");
-string endpoint = wexConfig["Endpoint"] ?? 
-    Environment.GetEnvironmentVariable("WEX_OPENAI_ENDPOINT") ?? 
-    throw new InvalidOperationException("WEX OpenAI endpoint not configured. Please set WEXOpenAI:Endpoint in appsettings.json or WEX_OPENAI_ENDPOINT environment variable.");
+string endpoint = Environment.GetEnvironmentVariable("WEX_OPENAI_ENDPOINT") ?? 
+    wexConfig["Endpoint"] ?? 
+    throw new InvalidOperationException("WEX OpenAI endpoint not configured. Please set WEX_OPENAI_ENDPOINT environment variable or WEXOpenAI:Endpoint in appsettings.json.");
 
-string apiKey = wexConfig["Key"] ?? 
-    Environment.GetEnvironmentVariable("WEX_OPENAI_KEY") ?? 
-    throw new InvalidOperationException("WEX OpenAI API key not configured. Please set WEXOpenAI:Key in appsettings.json or WEX_OPENAI_KEY environment variable.");
+string apiKey = Environment.GetEnvironmentVariable("WEX_OPENAI_KEY") ??
+    wexConfig["Key"] ?? 
+    throw new InvalidOperationException("WEX OpenAI API key not configured. Please set WEX_OPENAI_KEY environment variable or WEXOpenAI:Key in appsettings.json.");
 
 // Validate that we have actual values (not empty strings)
 if (string.IsNullOrWhiteSpace(endpoint))
-    throw new InvalidOperationException("WEX OpenAI endpoint is empty. Please configure WEXOpenAI:Endpoint in appsettings.json");
+    throw new InvalidOperationException("WEX OpenAI endpoint is empty. Please configure WEX_OPENAI_ENDPOINT environment variable or WEXOpenAI:Endpoint in appsettings.json");
 
 if (string.IsNullOrWhiteSpace(apiKey))
-    throw new InvalidOperationException("WEX OpenAI API key is empty. Please configure WEXOpenAI:Key in appsettings.json");
+    throw new InvalidOperationException("WEX OpenAI API key is empty. Please configure WEX_OPENAI_KEY environment variable or WEXOpenAI:Key in appsettings.json");
+
+if (apiKey.Contains("YOUR_WEX_API_KEY_HERE"))
+    throw new InvalidOperationException("WEX OpenAI API key contains placeholder text. Please set a real API key in WEX_OPENAI_KEY environment variable or WEXOpenAI:Key in appsettings.json");
 
 kernelBuilder.AddOpenAIChatCompletion(
     modelId: modelId,
