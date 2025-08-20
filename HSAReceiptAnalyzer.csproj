@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>e5e97644-2fc7-4a91-96bf-c081330ef4e1</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +13,7 @@
     <PackageReference Include="Azure.Core" Version="1.47.1" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.7" />
+    <PackageReference Include="Microsoft.KernelMemory.Core" Version="0.95.250107.1" />
     <PackageReference Include="Microsoft.ML" Version="4.0.2" />
     <PackageReference Include="Microsoft.ML.LightGbm" Version="4.0.2" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.61.0" />
@@ -23,6 +25,7 @@
 
   <ItemGroup>
     <Folder Include="Scripts\" />
+    <Folder Include="Tests\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
