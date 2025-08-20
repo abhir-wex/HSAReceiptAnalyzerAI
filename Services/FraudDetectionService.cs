@@ -12,20 +12,44 @@ namespace HSAReceiptAnalyzer.Services
         private readonly IClaimDatabaseManager _claimDatabaseManager;
         private readonly ISemanticKernelService _semanticKernelService;
         private readonly MLContext _mlContext;
-        private readonly ITransformer _model;
-        private readonly PredictionEngine<ClaimFeatures, FraudPrediction> _predictionEngine;
+        private ITransformer? _model;
+        private PredictionEngine<ClaimFeatures, FraudPrediction>? _predictionEngine;
 
-        public FraudDetectionService(IClaimDatabaseManager claimDatabaseManager, ISemanticKernelService semanticKernelService) {
-
+        public FraudDetectionService(IClaimDatabaseManager claimDatabaseManager, ISemanticKernelService semanticKernelService) 
+        {
             _claimDatabaseManager = claimDatabaseManager;
             _semanticKernelService = semanticKernelService;
             _mlContext = new MLContext();
 
-            var modelPath = Path.Combine(AppContext.BaseDirectory, "fraudModel.zip");
-            using var stream = new FileStream(modelPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            _model = _mlContext.Model.Load(stream, out var modelInputSchema);
+            // Try to load existing model, but don't fail if it doesn't exist
+            TryLoadExistingModel();
+        }
 
-            _predictionEngine = _mlContext.Model.CreatePredictionEngine<ClaimFeatures, FraudPrediction>(_model);
+        private void TryLoadExistingModel()
+        {
+            try
+            {
+                var modelPath = Path.Combine(AppContext.BaseDirectory, "fraudModel.zip");
+                if (File.Exists(modelPath))
+                {
+                    using var stream = new FileStream(modelPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    _model = _mlContext.Model.Load(stream, out var modelInputSchema);
+                    _predictionEngine = _mlContext.Model.CreatePredictionEngine<ClaimFeatures, FraudPrediction>(_model);
+                }
+                else
+                {
+                    // Model doesn't exist yet - will be created when TrainModel is called
+                    _model = null;
+                    _predictionEngine = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't fail - the service can still work with rule-based detection
+                Console.WriteLine($"Warning: Could not load ML model: {ex.Message}");
+                _model = null;
+                _predictionEngine = null;
+            }
         }
 
         public FraudResult Predict(Claim claim)
@@ -68,11 +92,22 @@ namespace HSAReceiptAnalyzer.Services
                 invalidItemsReason = $"Contains prohibited items: {string.Join(", ", foundProhibited)}";
             }
 
-            // Run ML prediction (supervised)
-            var mlPrediction = _predictionEngine.Predict(claimFeatures);
-
-            // ML fraud score as %
-            float mlScore = mlPrediction.Probability * 100;
+            // Run ML prediction if model is available
+            float mlScore = 0f;
+            bool mlFraudulent = false;
+            
+            if (_predictionEngine != null)
+            {
+                var mlPrediction = _predictionEngine.Predict(claimFeatures);
+                mlScore = mlPrediction.Probability * 100;
+                mlFraudulent = mlPrediction.IsFraudulent;
+            }
+            else
+            {
+                // Fallback to rule-based scoring when ML model is not available
+                mlScore = CalculateRuleBasedScore(claim);
+                mlFraudulent = mlScore >= 75f;
+            }
 
             // Rule scores
             float duplicateRuleScore = duplicateFound ? 95f : 0f;
@@ -101,7 +136,7 @@ namespace HSAReceiptAnalyzer.Services
             float finalScore = Math.Max(Math.Max(Math.Max(mlScore, duplicateRuleScore), invalidItemsRuleScore), itemFraudScore);
 
             // Fraud decision: fraud if any detection method triggers
-            bool isFraudulent = mlPrediction.IsFraudulent || duplicateFound || invalidItemsDetected || finalScore >= 75 || itemValidationScore < 30;
+            bool isFraudulent = mlFraudulent || duplicateFound || invalidItemsDetected || finalScore >= 75 || itemValidationScore < 30;
 
             // Build comprehensive explanation with priority order
             string explanation = "";
@@ -117,9 +152,11 @@ namespace HSAReceiptAnalyzer.Services
             {
                 explanation = $"⚠ Poor item validation score ({itemValidationScore:F1}%) - contains non-HSA eligible items.";
             }
-            else if (mlPrediction.IsFraudulent)
+            else if (mlFraudulent)
             {
-                explanation = $"⚠ ML classified as fraudulent ({mlScore:F2}%).";
+                explanation = _model != null 
+                    ? $"⚠ ML classified as fraudulent ({mlScore:F2}%)."
+                    : $"⚠ Rule-based analysis classified as fraudulent ({mlScore:F2}%).";
             }
             else if (itemValidationScore < 70)
             {
@@ -220,6 +257,10 @@ namespace HSAReceiptAnalyzer.Services
             // Save model to file
             var modelPath = Path.Combine(AppContext.BaseDirectory, "fraudModel.zip");
             _mlContext.Model.Save(model, trainingData.Schema, modelPath);
+
+            // Update the instance variables with the new model
+            _model = model;
+            _predictionEngine = _mlContext.Model.CreatePredictionEngine<ClaimFeatures, FraudPrediction>(_model);
 
             return modelPath;
         }
@@ -437,6 +478,57 @@ namespace HSAReceiptAnalyzer.Services
 
             var distinctCount = items.Select(i => i).Distinct(StringComparer.OrdinalIgnoreCase).Count();
             return (float)distinctCount / items.Count;
+        }
+
+        private float CalculateRuleBasedScore(Claim claim)
+        {
+            float score = 0f;
+            
+            // Round amount detection
+            if (IsRoundAmount(claim.Amount))
+            {
+                score += 30f;
+            }
+            
+            // High frequency submissions (check if multiple claims on same day)
+            var userClaims = _claimDatabaseManager.GetClaims(claim.UserId);
+            var sameDayClaims = userClaims.Count(c => c.SubmissionDate.Date == claim.SubmissionDate.Date);
+            if (sameDayClaims > 1)
+            {
+                score += 25f;
+            }
+            
+            // Unusual timing (late night or weekend)
+            if (IsUnusualTiming(claim.SubmissionDate))
+            {
+                score += 15f;
+            }
+            
+            // High amount deviation from user average
+            var avgAmount = CalculateAverageAmountForUser(claim.UserId);
+            if (avgAmount > 0 && Math.Abs(claim.Amount - avgAmount) / avgAmount > 2.0) // More than 200% deviation
+            {
+                score += 20f;
+            }
+            
+            return Math.Min(score, 100f); // Cap at 100
+        }
+
+        private bool IsRoundAmount(double amount)
+        {
+            // Check if amount is a round number (ends in .00, .50, or multiples of 25)
+            var remainder = amount % 1.0;
+            return remainder == 0.0 || remainder == 0.5 || amount % 25.0 == 0.0;
+        }
+
+        private bool IsUnusualTiming(DateTime submissionDate)
+        {
+            // Check if submission is late night (10 PM - 6 AM) or weekend
+            var hour = submissionDate.Hour;
+            var isLateNight = hour >= 22 || hour <= 6;
+            var isWeekend = submissionDate.DayOfWeek == DayOfWeek.Saturday || submissionDate.DayOfWeek == DayOfWeek.Sunday;
+            
+            return isLateNight || isWeekend;
         }
     }
 }
