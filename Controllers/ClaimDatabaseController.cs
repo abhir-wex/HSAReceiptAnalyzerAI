@@ -304,7 +304,7 @@ namespace HSAReceiptAnalyzer.Controllers
             // If already marked as fraudulent, return high score
             if (claim.IsFraudulent == 1)
             {
-                return 85 + new Random().Next(0, 15); // 85-100 for confirmed fraud
+                return 85 + new Random(claim.ClaimId?.GetHashCode() ?? 0).Next(0, 15); // 85-100 for confirmed fraud
             }
 
             // Calculate score based on various risk factors
