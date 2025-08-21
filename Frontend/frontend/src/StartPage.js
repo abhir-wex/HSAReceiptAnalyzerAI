@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button, Select } from "./components/UIComponents";
 import ClaimCard from "./components/ClaimCard";
@@ -54,9 +54,141 @@ const AnimatedBackground = () => (
   </div>
 );
 
-// Initial claims data
-const initialClaims = [
+// Pagination Component
+const PaginationControls = ({ pagination, onPageChange, isLoading }) => {
+  const { currentPage, totalPages, hasNextPage, hasPreviousPage, totalClaims } = pagination;
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const showPages = 5; // Show 5 page numbers at most
+    
+    let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
+    let endPage = Math.min(totalPages, startPage + showPages - 1);
+    
+    // Adjust start page if we're near the end
+    if (endPage - startPage + 1 < showPages) {
+      startPage = Math.max(1, endPage - showPages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center space-y-4 py-6"
+    >
+      {/* Page Info */}
+      <div className="text-sm text-gray-600 bg-white/70 px-4 py-2 rounded-full border border-wex-blue/20">
+        Showing page {currentPage} of {totalPages} ({totalClaims} total claims)
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center space-x-2">
+        {/* Previous Button */}
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={!hasPreviousPage || isLoading}
+          className="px-4 py-2 bg-gradient-to-r from-wex-blue/10 to-wex-teal/10 border border-wex-blue/30 text-wex-blue rounded-lg hover:bg-wex-blue/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>Previous</span>
+        </button>
+
+        {/* Page Numbers */}
+        <div className="flex items-center space-x-1">
+          {currentPage > 3 && (
+            <>
+              <button
+                onClick={() => onPageChange(1)}
+                disabled={isLoading}
+                className="px-3 py-2 text-wex-blue hover:bg-wex-blue/10 rounded-lg transition-all duration-300 disabled:opacity-50"
+              >
+                1
+              </button>
+              {currentPage > 4 && (
+                <span className="px-2 py-2 text-gray-400">...</span>
+              )}
+            </>
+          )}
+
+          {getPageNumbers().map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => onPageChange(pageNum)}
+              disabled={isLoading}
+              className={`px-3 py-2 rounded-lg transition-all duration-300 disabled:opacity-50 ${
+                pageNum === currentPage
+                  ? 'bg-gradient-to-r from-wex-blue to-wex-teal text-white shadow-lg'
+                  : 'text-wex-blue hover:bg-wex-blue/10'
+              }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+
+          {currentPage < totalPages - 2 && (
+            <>
+              {currentPage < totalPages - 3 && (
+                <span className="px-2 py-2 text-gray-400">...</span>
+              )}
+              <button
+                onClick={() => onPageChange(totalPages)}
+                disabled={isLoading}
+                className="px-3 py-2 text-wex-blue hover:bg-wex-blue/10 rounded-lg transition-all duration-300 disabled:opacity-50"
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Next Button */}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={!hasNextPage || isLoading}
+          className="px-4 py-2 bg-gradient-to-r from-wex-teal/10 to-wex-blue/10 border border-wex-teal/30 text-wex-teal rounded-lg hover:bg-wex-teal/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          <span>Next</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Quick Jump */}
+      <div className="flex items-center space-x-2 text-sm">
+        <span className="text-gray-600">Jump to page:</span>
+        <select
+          value={currentPage}
+          onChange={(e) => onPageChange(parseInt(e.target.value))}
+          disabled={isLoading}
+          className="px-2 py-1 border border-wex-blue/30 rounded text-wex-blue focus:border-wex-blue focus:outline-none disabled:opacity-50"
+        >
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+            <option key={pageNum} value={pageNum}>
+              {pageNum}
+            </option>
+          ))}
+        </select>
+      </div>
+    </motion.div>
+  );
+};
+
+// Initial fallback claims data (used only if backend is unavailable)
+const fallbackClaims = [
   {
+    id: "fallback-1",
     userId: "USR001",
     date: "2025-07-01",
     amount: "$100.00",
@@ -66,6 +198,7 @@ const initialClaims = [
     status: "Legit"
   },
   {
+    id: "fallback-2",
     userId: "USR002",
     date: "2025-07-10",
     amount: "$250.00",
@@ -75,6 +208,7 @@ const initialClaims = [
     status: "Fraud"
   },
   {
+    id: "fallback-3",
     userId: "USR001",
     date: "2025-07-15",
     amount: "$45.99",
@@ -84,6 +218,7 @@ const initialClaims = [
     status: "Legit"
   },
   {
+    id: "fallback-4",
     userId: "USR003",
     date: "2025-07-18",
     amount: "$150.00",
@@ -93,6 +228,7 @@ const initialClaims = [
     status: "Suspicious"
   },
   {
+    id: "fallback-5",
     userId: "USR001",
     date: "2025-07-22",
     amount: "$89.99",
@@ -106,7 +242,17 @@ const initialClaims = [
 function StartPage() {
   const [activeTab, setActiveTab] = useState("claims");
   const [showForm, setShowForm] = useState(false);
-  const [claims, setClaims] = useState(initialClaims);
+  const [claims, setClaims] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    pageSize: 5,
+    totalClaims: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false
+  });
+  const [isLoadingClaims, setIsLoadingClaims] = useState(true);
+  const [claimsError, setClaimsError] = useState(null);
   const [result, setResult] = useState("");
   const [resultVisible, setResultVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -119,6 +265,115 @@ function StartPage() {
   const [loadingMessage, setLoadingMessage] = useState("Processing...");
   const [loadingSubMessage, setLoadingSubMessage] = useState("Please wait while we analyze your request");
   const [loadingProgress, setLoadingProgress] = useState(null);
+
+  // Load claims from backend on component mount
+  useEffect(() => {
+    loadClaimsFromBackend();
+  }, []);
+
+  // Reload claims when pagination, search, filter, or sort changes
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      loadClaimsFromBackend(pagination.currentPage, searchTerm, filterBy, sortBy);
+    }, 500); // Debounce search
+
+    return () => clearTimeout(debounceTimer);
+  }, [pagination.currentPage, searchTerm, filterBy, sortBy]);
+
+  // Function to load claims from backend with pagination
+  const loadClaimsFromBackend = async (page = 1, search = searchTerm, filter = filterBy, sort = sortBy) => {
+    try {
+      setIsLoadingClaims(true);
+      setClaimsError(null);
+      
+      console.log(`Loading claims from backend - Page: ${page}, Search: "${search}", Filter: ${filter}, Sort: ${sort}`);
+      
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        pageSize: '5',
+        search: search,
+        filter: filter,
+        sortBy: sort
+      });
+
+      const response = await fetch(`/api/ClaimDatabase/claims?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log('Successfully loaded claims from backend:', responseData);
+        
+        // Format claims to ensure consistent structure
+        const formattedClaims = responseData.claims.map((claim, index) => ({
+          id: claim.id || `backend-${index}`,
+          userId: claim.userId || 'Unknown',
+          date: claim.date || new Date().toISOString().split('T')[0],
+          amount: claim.amount || '$0.00',
+          merchant: claim.merchant || 'Unknown Merchant',
+          description: claim.description || 'No description',
+          fraudScore: claim.fraudScore || 0,
+          status: claim.status || 'Unknown',
+          submissionDate: claim.submissionDate || new Date().toISOString(),
+          isFraudulent: claim.isFraudulent || false
+        }));
+        
+        setClaims(formattedClaims);
+        setPagination(responseData.pagination);
+      } else {
+        console.error('Failed to load claims from backend. Status:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        setClaimsError(`Failed to load claims: ${response.status} ${response.statusText}`);
+        
+        // Use fallback data with simulated pagination
+        const fallbackPagination = {
+          currentPage: 1,
+          pageSize: 5,
+          totalClaims: fallbackClaims.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPreviousPage: false
+        };
+        setClaims(fallbackClaims);
+        setPagination(fallbackPagination);
+      }
+    } catch (error) {
+      console.error('Error loading claims from backend:', error);
+      setClaimsError(`Network error: ${error.message}`);
+      
+      // Use fallback data with simulated pagination
+      const fallbackPagination = {
+        currentPage: 1,
+        pageSize: 5,
+        totalClaims: fallbackClaims.length,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false
+      };
+      setClaims(fallbackClaims);
+      setPagination(fallbackPagination);
+    } finally {
+      setIsLoadingClaims(false);
+    }
+  };
+
+  // Function to handle page changes
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages && !isLoadingClaims) {
+      setPagination(prev => ({ ...prev, currentPage: newPage }));
+    }
+  };
+
+  // Function to refresh claims (useful after submitting new claims)
+  const refreshClaims = async () => {
+    await loadClaimsFromBackend(1, searchTerm, filterBy, sortBy); // Reset to page 1 when refreshing
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
 
   // Loading spinner control functions
   const showSpinner = (message = "Processing...", subMessage = "Please wait while we analyze your request", progress = null) => {
@@ -154,51 +409,29 @@ function StartPage() {
     hideSpinner();
   };
 
-  // Enhanced search handler with loading
-  const handleSearchChange = async (e) => {
+  // Enhanced search handler (pagination will handle the actual search)
+  const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
-    
-    if (value.length > 0) {
-      await simulateProcessing('search', 600);
-    }
+    // Reset to page 1 when searching
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  // Enhanced filter handler with loading
-  const handleFilterChange = async (e) => {
+  // Enhanced filter handler (pagination will handle the actual filter)
+  const handleFilterChange = (e) => {
     const value = e.target.value;
     setFilterBy(value);
-    await simulateProcessing('filter', 500);
+    // Reset to page 1 when filtering
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  // Enhanced sort handler with loading
-  const handleSortChange = async (e) => {
+  // Enhanced sort handler (pagination will handle the actual sort)
+  const handleSortChange = (e) => {
     const value = e.target.value;
     setSortBy(value);
-    await simulateProcessing('sort', 400);
+    // Reset to page 1 when sorting
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
-
-  // Filter and sort claims
-  const filteredAndSortedClaims = claims
-    .filter(claim => {
-      if (filterBy === "all") return true;
-      if (filterBy === "fraud" && claim.fraudScore > 70) return true;
-      if (filterBy === "suspicious" && claim.fraudScore > 30 && claim.fraudScore <= 70) return true;
-      if (filterBy === "legit" && claim.fraudScore <= 30) return true;
-      return false;
-    })
-    .filter(claim => 
-      searchTerm === "" || 
-      claim.userId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      claim.merchant.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      claim.description.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sortBy === "date") return new Date(b.date) - new Date(a.date);
-      if (sortBy === "amount" ) return parseFloat(b.amount.replace('$', '')) - parseFloat(a.amount.replace('$', ''));
-      if (sortBy === "fraudScore") return b.fraudScore - a.fraudScore;
-      return 0;
-    });
 
   const toggleForm = () => setShowForm((v) => !v);
 
@@ -254,19 +487,48 @@ function StartPage() {
       const merchant = formData.get('merchant');
       const description = formData.get('description');
       
-      // Add the new claim to the table with fraud score
-      setClaims([
-        {
+      // Save claim to backend database
+      try {
+        console.log("Saving claim to backend database...");
+        
+        const claimPayload = {
           userId: userId,
-          date: date,
-          amount: `$${parseFloat(amount).toFixed(2)}`,
+          name: userId, // Using userId as name for now
           merchant: merchant,
+          serviceType: "Healthcare",
+          amount: parseFloat(amount),
+          dateOfService: new Date(date).toISOString(),
+          category: "Medical",
           description: description,
           fraudScore: fraudScore,
-          status: getStatus(fraudScore)
-        },
-        ...claims
-      ]);
+          userAge: 30, // Default age
+          items: [description],
+          ipAddress: "127.0.0.1", // Default IP
+          receiptHash: `hash-${Date.now()}` // Generate simple hash
+        };
+
+        const saveResponse = await fetch('/api/ClaimDatabase/claims', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(claimPayload)
+        });
+
+        if (saveResponse.ok) {
+          const savedClaim = await saveResponse.json();
+          console.log("Claim saved to database successfully:", savedClaim);
+          
+          // Refresh claims from backend to get the actual stored data
+          setTimeout(() => {
+            refreshClaims();
+          }, 1000);
+        } else {
+          console.error("Failed to save claim to database:", saveResponse.status);
+        }
+      } catch (saveError) {
+        console.error("Error saving claim to database:", saveError);
+      }
       
       // Close the form first
       setShowForm(false);
@@ -469,6 +731,45 @@ function StartPage() {
                   >
                     Monitor and manage HSA claims with real-time fraud detection
                   </motion.p>
+                  
+                  {/* Data source indicator */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="mt-4 flex justify-center"
+                  >
+                    <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
+                      claimsError 
+                        ? 'bg-wex-red/10 text-wex-red border border-wex-red/30'
+                        : isLoadingClaims
+                        ? 'bg-wex-yellow/10 text-wex-yellow border border-wex-yellow/30'
+                        : 'bg-wex-blue/10 text-wex-blue border border-wex-blue/30'
+                    }`}>
+                      {claimsError ? (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                          Using Fallback Data
+                        </>
+                      ) : isLoadingClaims ? (
+                        <>
+                          <svg className="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Loading from Database
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                          </svg>
+                          Live Database Connection (Paginated)
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
                 </div>
 
                 {/* Search and Filter Controls with WEX styling */}
@@ -529,12 +830,26 @@ function StartPage() {
                     {/* Results count with WEX styling */}
                     <div className="mt-6 text-center">
                       <div className="inline-flex items-center bg-gradient-to-r from-wex-blue/10 via-wex-teal/10 to-wex-blue/10 border border-wex-blue/30 text-wex-blue px-6 py-3 rounded-full shadow-lg text-base font-semibold">
-                        Showing {filteredAndSortedClaims.length} of {claims.length} claims
-                        {filteredAndSortedClaims.length !== claims.length && (
+                        Page {pagination.currentPage} - Showing {claims.length} of {pagination.totalClaims} claims
+                        {(searchTerm || filterBy !== "all") && (
                           <span className="ml-2 bg-wex-blue/20 px-2 py-1 rounded-full text-xs text-wex-blue">
                             Filtered
                           </span>
                         )}
+                      </div>
+                      
+                      {/* Refresh button */}
+                      <div className="mt-4 flex justify-center">
+                        <button
+                          onClick={refreshClaims}
+                          disabled={isLoadingClaims}
+                          className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-wex-teal/10 to-wex-blue/10 border border-wex-teal/30 text-wex-teal rounded-lg hover:bg-wex-teal/20 transition-all duration-300 disabled:opacity-50"
+                        >
+                          <svg className={`w-4 h-4 mr-2 ${isLoadingClaims ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          {isLoadingClaims ? 'Refreshing...' : 'Refresh Claims'}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -547,18 +862,46 @@ function StartPage() {
                   transition={{ delay: 0.4 }}
                   className="w-full max-w-7xl mb-8"
                 >
-                  <div className="space-y-4">
-                    <AnimatePresence>
-                      {filteredAndSortedClaims.map((claim, index) => (
-                        <ClaimCard 
-                          key={`${claim.userId}-${claim.date}-${claim.amount}`} 
-                          claim={claim} 
-                          index={index} 
-                        />
-                      ))}
-                    </AnimatePresence>
-                  </div>
+                  {isLoadingClaims ? (
+                    <div className="text-center py-12">
+                      <div className="inline-flex items-center text-wex-blue">
+                        <svg className="w-8 h-8 mr-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span className="text-lg font-medium">Loading Claims from Database...</span>
+                      </div>
+                    </div>
+                  ) : claims.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="inline-flex flex-col items-center text-gray-500">
+                        <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span className="text-lg font-medium">No claims found</span>
+                        <span className="text-sm">Try adjusting your search or filter criteria</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <AnimatePresence>
+                        {claims.map((claim, index) => (
+                          <ClaimCard 
+                            key={claim.id || `${claim.userId}-${claim.date}-${claim.amount}`} 
+                            claim={claim} 
+                            index={index} 
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
                 </motion.div>
+
+                {/* Pagination Controls */}
+                <PaginationControls 
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  isLoading={isLoadingClaims}
+                />
                 
                 {/* Add Claim Button with WEX styling */}
                 <motion.div
