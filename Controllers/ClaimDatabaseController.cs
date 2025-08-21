@@ -201,7 +201,7 @@ namespace HSAReceiptAnalyzer.Controllers
                     SubmissionDate = DateTime.UtcNow,
                     Category = request.Category ?? "Medical",
                     Location = request.Location ?? "Unknown",
-                    UserAge = request.UserAge > 0 ? request.UserAge : 30,
+                    UserAge = request.UserAge > 0 ? request.UserAge : DefaultUserAge,
                     Items = request.Items ?? new List<string> { request.Description ?? "Service" },
                     UserGender = request.UserGender ?? "Unknown",
                     Description = request.Description ?? "HSA Expense",
