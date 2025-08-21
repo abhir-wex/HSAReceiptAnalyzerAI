@@ -1,22 +1,22 @@
-# ?? Sistema de PaginaÁ„o - Claims Portfolio
+# üìÑ Sistema de Pagina√ß√£o - Claims Portfolio
 
-## ?? ImplementaÁ„o Completa
+## ?? Implementa√ß√£o Completa
 
-Implementei um sistema de paginaÁ„o completo tanto no **backend (.NET 8)** quanto no **frontend (React)** para exibir **5 claims por vez** no Claims Portfolio.
+Implementei um sistema de pagina√ß√£o completo tanto no **backend (.NET 8)** quanto no **frontend (React)** para exibir **5 claims por vez** no Claims Portfolio.
 
-## ?? Backend - API com PaginaÁ„o
+## ?? Backend - API com Pagina√ß√£o
 
 ### Endpoint Principal Atualizado
 ```http
 GET /api/ClaimDatabase/claims?page=1&pageSize=5&search=&filter=all&sortBy=date
 ```
 
-### Par‚metros de Query
-- `page` (int): N˙mero da p·gina (default: 1)
-- `pageSize` (int): Itens por p·gina (default: 5, m·ximo: 50)
+### Par√¢metros de Query
+- `page` (int): N√∫mero da p√°gina (default: 1)
+- `pageSize` (int): Itens por p√°gina (default: 5, m√°ximo: 50)
 - `search` (string): Termo de busca (opcional)
 - `filter` (string): Filtro de risco - "all", "fraud", "suspicious", "legit"
-- `sortBy` (string): OrdenaÁ„o - "date", "amount", "fraudScore"
+- `sortBy` (string): Ordena√ß√£o - "date", "amount", "fraudScore"
 
 ### Resposta da API
 ```json
@@ -55,16 +55,16 @@ GET /api/ClaimDatabase/claims?page=1&pageSize=5&search=&filter=all&sortBy=date
 ```
 
 ### Funcionalidades Backend
-? **PaginaÁ„o server-side**: Processa apenas os dados necess·rios
+? **Pagina√ß√£o server-side**: Processa apenas os dados necess√°rios
 ? **Busca integrada**: Busca por UserID, Merchant, Description
 ? **Filtros de risco**: All, Fraud, Suspicious, Legitimate
-? **OrdenaÁ„o din‚mica**: Por data, valor, fraud score
-? **ValidaÁ„o de par‚metros**: Limites e valores padr„o
-? **Endpoint alternativo**: `/claims/all` para buscar todos os claims sem paginaÁ„o
+? **Ordena√ß√£o din√¢mica**: Por data, valor, fraud score
+? **Valida√ß√£o de par√¢metros**: Limites e valores padr√£o
+? **Endpoint alternativo**: `/claims/all` para buscar todos os claims sem pagina√ß√£o
 
-## ?? Frontend - Interface com PaginaÁ„o
+## ?? Frontend - Interface com Pagina√ß√£o
 
-### Componente de PaginaÁ„o
+### Componente de Pagina√ß√£o
 ```jsx
 <PaginationControls 
   pagination={pagination}
@@ -74,112 +74,112 @@ GET /api/ClaimDatabase/claims?page=1&pageSize=5&search=&filter=all&sortBy=date
 ```
 
 ### Funcionalidades Frontend
-? **Controles de navegaÁ„o**: Previous, Next, n˙meros de p·gina
-? **Salto r·pido**: Dropdown para ir direto a qualquer p·gina
-? **InformaÁıes contextuais**: "P·gina X de Y (Z claims totais)"
+? **Controles de navega√ß√£o**: Previous, Next, n√∫meros de p√°gina
+? **Salto r√°pido**: Dropdown para ir direto a qualquer p√°gina
+? **Informa√ß√µes contextuais**: "P√°gina X de Y (Z claims totais)"
 ? **Estados de loading**: Indicadores visuais durante carregamento
 ? **Debounce inteligente**: Busca otimizada com delay de 500ms
-? **Reset autom·tico**: Volta ‡ p·gina 1 ao filtrar/buscar
-? **Fallback gracioso**: Funciona mesmo se backend estiver indisponÌvel
+? **Reset autom√°tico**: Volta √† p√°gina 1 ao filtrar/buscar
+? **Fallback gracioso**: Funciona mesmo se backend estiver indispon√≠vel
 
-### Controles de PaginaÁ„o
-- **Previous/Next**: NavegaÁ„o sequencial com Ìcones
-- **N˙meros das p·ginas**: Mostra atÈ 5 p·ginas com navegaÁ„o inteligente
+### Controles de Pagina√ß√£o
+- **Previous/Next**: Navega√ß√£o sequencial com √≠cones
+- **N√∫meros das p√°ginas**: Mostra at√© 5 p√°ginas com navega√ß√£o inteligente
 - **Jump to page**: Dropdown para saltar diretamente
-- **Page info**: Contexto claro da posiÁ„o atual
+- **Page info**: Contexto claro da posi√ß√£o atual
 
 ## ?? Fluxo de Funcionamento
 
 ```mermaid
 graph TD
-    A[Usu·rio carrega p·gina] --> B[Carrega p·gina 1 com 5 claims]
-    B --> C[Usu·rio navega/busca/filtra]
-    C --> D[Reset para p·gina 1]
-    D --> E[Nova requisiÁ„o com par‚metros]
+    A[Usu√°rio carrega p√°gina] --> B[Carrega p√°gina 1 com 5 claims]
+    B --> C[Usu√°rio navega/busca/filtra]
+    C --> D[Reset para p√°gina 1]
+    D --> E[Nova requisi√ß√£o com par√¢metros]
     E --> F[Backend processa e retorna]
     F --> G[Frontend atualiza interface]
-    G --> H[Controles de paginaÁ„o atualizados]
+    G --> H[Controles de pagina√ß√£o atualizados]
 ```
 
-## ?? BenefÌcios Implementados
+## ?? Benef√≠cios Implementados
 
 ### ? Performance Otimizada
-- **Carregamento r·pido**: Apenas 5 claims por vez
-- **Menos dados**: Reduz transferÍncia de rede
+- **Carregamento r√°pido**: Apenas 5 claims por vez
+- **Menos dados**: Reduz transfer√™ncia de rede
 - **Processamento eficiente**: Backend filtra antes de enviar
 
 ### ?? UX Melhorado
-- **NavegaÁ„o intuitiva**: Controles visuais claros
-- **Feedback visual**: Estados de loading e paginaÁ„o
-- **Responsivo**: Funciona bem em mÛvel e desktop
+- **Navega√ß√£o intuitiva**: Controles visuais claros
+- **Feedback visual**: Estados de loading e pagina√ß√£o
+- **Responsivo**: Funciona bem em m√≥vel e desktop
 
 ### ?? Busca e Filtros Integrados
-- **Busca server-side**: Busca no backend, n„o sÛ frontend
+- **Busca server-side**: Busca no backend, n√£o s√≥ frontend
 - **Filtros em tempo real**: Resultados imediatos
-- **OrdenaÁ„o din‚mica**: M˙ltiplas opÁıes de sort
+- **Ordena√ß√£o din√¢mica**: M√∫ltiplas op√ß√µes de sort
 
 ### ?? Interface Responsiva
-- **Controles adapt·veis**: Se ajustam ao tamanho da tela
-- **InformaÁıes claras**: Sempre mostra contexto da paginaÁ„o
+- **Controles adapt√°veis**: Se ajustam ao tamanho da tela
+- **Informa√ß√µes claras**: Sempre mostra contexto da pagina√ß√£o
 - **Estados visuais**: Loading, erro, sucesso
 
-## ??? Controles DisponÌveis
+## ??? Controles Dispon√≠veis
 
-### NavegaÁ„o
-- ?? **Previous**: P·gina anterior (se existir)
-- ?? **Next**: PrÛxima p·gina (se existir)
-- ?? **Page Numbers**: P·ginas numeradas (m·ximo 5 visÌveis)
+### Navega√ß√£o
+- ?? **Previous**: P√°gina anterior (se existir)
+- ?? **Next**: Pr√≥xima p√°gina (se existir)
+- ?? **Page Numbers**: P√°ginas numeradas (m√°ximo 5 vis√≠veis)
 - ?? **Jump to Page**: Dropdown para saltar diretamente
 
-### InformaÁıes
-- ?? **Page Info**: "P·gina X de Y (Z claims totais)"
-- ?? **Filter Status**: Indica se filtros est„o aplicados
+### Informa√ß√µes
+- ?? **Page Info**: "P√°gina X de Y (Z claims totais)"
+- ?? **Filter Status**: Indica se filtros est√£o aplicados
 - ?? **Connection Status**: Live Database Connection (Paginated)
 
 ### Estados Visuais
 - ? **Loading**: Spinner durante carregamento
 - ? **Error**: Fallback para dados locais
-- ? **Success**: Conex„o ativa com database
+- ? **Success**: Conex√£o ativa com database
 
 ## ?? Exemplo de Uso
 
-### Cen·rio 1: NavegaÁ„o Normal
-1. **P·gina inicial**: Mostra claims 1-5
+### Cen√°rio 1: Navega√ß√£o Normal
+1. **P√°gina inicial**: Mostra claims 1-5
 2. **Clica "Next"**: Mostra claims 6-10
 3. **Clica "3"**: Mostra claims 11-15
 
-### Cen·rio 2: Busca com PaginaÁ„o
-1. **Busca "Hospital"**: Filtra e volta p·gina 1
-2. **Resultados**: 23 claims encontrados, 5 p·ginas
+### Cen√°rio 2: Busca com Pagina√ß√£o
+1. **Busca "Hospital"**: Filtra e volta p√°gina 1
+2. **Resultados**: 23 claims encontrados, 5 p√°ginas
 3. **Navega**: Pode navegar pelos resultados filtrados
 
-### Cen·rio 3: Filtro por Risco
-1. **Seleciona "High Risk (Fraud)"**: Filtra e volta p·gina 1
-2. **Resultados**: 8 claims fraudulentos, 2 p·ginas
+### Cen√°rio 3: Filtro por Risco
+1. **Seleciona "High Risk (Fraud)"**: Filtra e volta p√°gina 1
+2. **Resultados**: 8 claims fraudulentos, 2 p√°ginas
 3. **Visualiza**: Apenas claims de alto risco
 
-## ?? ConfiguraÁıes
+## ?? Configura√ß√µes
 
-### Tamanho da P·gina
-- **Fixo**: 5 claims por p·gina
-- **Configur·vel**: Pode ser alterado no backend (m·ximo 50)
+### Tamanho da P√°gina
+- **Fixo**: 5 claims por p√°gina
+- **Configur√°vel**: Pode ser alterado no backend (m√°ximo 50)
 - **Otimizado**: Tamanho ideal para UX e performance
 
 ### Debounce
-- **Busca**: 500ms de delay para evitar requisiÁıes excessivas
-- **Filtros**: AplicaÁ„o imediata
-- **OrdenaÁ„o**: AplicaÁ„o imediata
+- **Busca**: 500ms de delay para evitar requisi√ß√µes excessivas
+- **Filtros**: Aplica√ß√£o imediata
+- **Ordena√ß√£o**: Aplica√ß√£o imediata
 
 ---
 
 ## ?? Resultado Final
 
-**Sistema de paginaÁ„o completo implementado!** Agora o Claims Portfolio:
+**Sistema de pagina√ß√£o completo implementado!** Agora o Claims Portfolio:
 
 ? **Carrega rapidamente** - apenas 5 claims por vez
-? **Navega facilmente** - controles intuitivos de paginaÁ„o  
+? **Navega facilmente** - controles intuitivos de pagina√ß√£o  
 ? **Busca eficientemente** - filtros server-side integrados
 ? **Escala bem** - suporta milhares de claims sem problemas
 ? **Funciona offline** - fallback gracioso para dados locais
 
-A experiÍncia do usu·rio foi significativamente melhorada com carregamento mais r·pido e navegaÁ„o mais organizada!
+A experi√™ncia do usu√°rio foi significativamente melhorada com carregamento mais r√°pido e navega√ß√£o mais organizada!
